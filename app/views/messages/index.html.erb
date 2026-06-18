@@ -22,12 +22,15 @@
   </details>
 <% end %>
 
+<p class="text-xs text-gray-400 mb-2">
+  Live relay — messages aren't stored, so only the last few minutes of traffic show here.
+</p>
 <div class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
   <% if @messages.any? %>
     <% @messages.each do |m| %>
       <%= render "messages/row", message: m %>
     <% end %>
   <% else %>
-    <p class="p-4 text-sm text-gray-400">No messages yet. They'll appear here once an agent sends one or a text arrives.</p>
+    <p class="p-4 text-sm text-gray-400">No recent messages. Sent and received texts appear here briefly while in transit.</p>
   <% end %>
 </div>

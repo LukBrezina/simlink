@@ -19,10 +19,8 @@ Rails.application.routes.draw do
 
   # --- MCP server (agent ↔ server), Streamable HTTP transport ---
   match "/mcp",        to: "mcp#handle",    via: :post
-  get   "/mcp",        to: "mcp#stream"
   match "/mcp",        to: "mcp#terminate", via: :delete
   match "/mcp/:token", to: "mcp#handle",    via: :post
-  get   "/mcp/:token", to: "mcp#stream"
   match "/mcp/:token", to: "mcp#terminate", via: :delete
 
   # --- Device pairing (web, session-auth): hands a device token to the native app ---
@@ -32,8 +30,9 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       post "sims",      to: "sims#update"          # report available SIM cards
-      get  "outbox",    to: "outbox#index"         # long-poll for queued outbound SMS
+      get  "outbox",    to: "outbox#index"         # non-blocking: pull queued outbound SMS
       post "heartbeat", to: "devices#heartbeat"
+      post "fcm_token", to: "devices#fcm_token"    # register/refresh the FCM push token
       post "inbound",   to: "messages#inbound"     # report a received SMS
       post "messages/:id/status", to: "messages#status" # report send result
     end

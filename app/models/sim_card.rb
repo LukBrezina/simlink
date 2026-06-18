@@ -2,7 +2,6 @@ class SimCard < ApplicationRecord
   belongs_to :device
   has_one :user, through: :device
   has_many :mcp_tokens, dependent: :destroy
-  has_many :messages, dependent: :destroy
 
   validates :subscription_id, presence: true,
             uniqueness: { scope: :device_id }

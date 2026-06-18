@@ -3,13 +3,15 @@ module Mcp
   #
   # Given a parsed JSON-RPC message (single object), #call returns a response
   # hash to send back, or nil for notifications (which get no response).
-  # HTTP transport, auth and SSE streaming live in McpController.
+  # HTTP transport and auth live in McpController.
+  #
+  # Messages are relayed through the in-memory SmsRelay — never stored on disk
+  # and never logged. Every tool call is non-blocking: wait_for_sms peeks the
+  # buffer and returns immediately, and the agent re-polls to keep waiting.
   class Handler
     PROTOCOL_VERSION = "2025-06-18".freeze
     SERVER_INFO = { name: "simlink", version: "0.1.0" }.freeze
-    DEFAULT_WAIT = 25
-    MAX_WAIT = 280
-    POLL_INTERVAL = 1.5
+    DEFAULT_LIMIT = 20
 
     # JSON-RPC error codes
     PARSE_ERROR = -32700
@@ -77,8 +79,9 @@ module Mcp
         serverInfo: SERVER_INFO,
         instructions: "Send and receive SMS through the user's shared SIM card " \
                       "(#{sim_card.display_name}). Use `send_sms` to send a text, " \
-                      "`list_messages` to read recent history, and `wait_for_sms` to " \
-                      "block until a new inbound text arrives (push-style)."
+                      "`list_messages` to see recent in-flight messages, and " \
+                      "`wait_for_sms` to check for newly arrived texts. Messages are " \
+                      "relayed in memory and not stored, so only recent traffic is visible."
       }
     end
 
@@ -104,64 +107,54 @@ module Mcp
       raise Mcp::ToolError, "`to` (recipient phone number) is required" if to.blank?
       raise Mcp::ToolError, "`body` (message text) is required" if body.strip.blank?
 
-      message = sim_card.messages.create!(
-        mcp_token: mcp_token,
-        direction: "outbound",
-        address: to,
-        body: body,
-        status: "queued"
+      entry = SmsRelay.enqueue_outbound(
+        sim_card_id: sim_card.id,
+        subscription_id: sim_card.subscription_id,
+        to: to,
+        body: body
       )
+      Fcm.wake(sim_card.device)
       mcp_token.touch_used!
 
       tool_content(
-        "Queued SMS to #{to} (message ##{message.id}). The phone will send it shortly; " \
+        "Queued SMS to #{to} (message ##{entry.id}). The phone will send it shortly; " \
         "use list_messages to check its status.",
-        message.as_mcp_json
+        message_json(entry)
       )
     end
 
     def tool_list_messages(args)
-      scope = sim_card.messages.recent_first
-      case args["direction"]
-      when "inbound"  then scope = scope.inbound
-      when "outbound" then scope = scope.outbound
-      end
-      if (since = parse_time(args["since"]))
-        scope = scope.where("messages.created_at > ?", since)
-      end
-      limit = [ [ args.fetch("limit", 20).to_i, 1 ].max, 100 ].min
-      messages = scope.limit(limit).map(&:as_mcp_json)
+      direction = %w[inbound outbound].include?(args["direction"]) ? args["direction"] : "all"
+      limit = [ [ args.fetch("limit", DEFAULT_LIMIT).to_i, 1 ].max, 100 ].min
+      entries = SmsRelay.recent(sim_card.id, direction: direction, since: parse_time(args["since"]), limit: limit)
       mcp_token.touch_used!
 
       tool_content(
-        messages.empty? ? "No messages found." : "#{messages.size} message(s).",
-        { messages: messages }
+        entries.empty? ? "No recent messages." : "#{entries.size} message(s).",
+        { messages: entries.map { |e| message_json(e) } }
       )
     end
 
+    # Non-blocking: returns inbound SMS that arrived after `since` (defaults to
+    # everything currently buffered). If none, replies pending:true with a
+    # `checked_at` timestamp to pass back as `since` on the next call.
     def tool_wait_for_sms(args)
-      timeout = [ [ args.fetch("timeout_seconds", DEFAULT_WAIT).to_i, 1 ].max, MAX_WAIT ].min
-      since = parse_time(args["since"]) || Time.current
-      deadline = monotonic_now + timeout
-
-      loop do
-        fresh = sim_card.messages.inbound.where("messages.created_at > ?", since).chronological.to_a
-        if fresh.any?
-          mcp_token.touch_used!
-          return tool_content(
-            "#{fresh.size} new inbound SMS.",
-            { messages: fresh.map(&:as_mcp_json) }
-          )
-        end
-        break if monotonic_now >= deadline
-        sleep [ POLL_INTERVAL, deadline - monotonic_now ].min
-      end
-
+      since = parse_time(args["since"])
+      checked_at = Time.current
+      fresh = SmsRelay.inbound_since(sim_card.id, since)
       mcp_token.touch_used!
-      tool_content(
-        "No new SMS within #{timeout}s. Call wait_for_sms again to keep waiting.",
-        { messages: [], timed_out: true }
-      )
+
+      if fresh.any?
+        tool_content(
+          "#{fresh.size} new inbound SMS.",
+          { messages: fresh.map { |e| message_json(e) }, checked_at: checked_at.iso8601 }
+        )
+      else
+        tool_content(
+          "No new SMS yet. Call wait_for_sms again with since=#{checked_at.iso8601} to keep checking.",
+          { messages: [], pending: true, checked_at: checked_at.iso8601 }
+        )
+      end
     end
 
     # ---- resources -------------------------------------------------------
@@ -171,7 +164,7 @@ module Mcp
         {
           uri: "sms://inbox",
           name: "SMS inbox",
-          description: "Recent received and sent messages for #{sim_card.display_name}",
+          description: "Recent in-flight messages for #{sim_card.display_name} (not stored)",
           mimeType: "application/json"
         }
       ]
@@ -181,7 +174,7 @@ module Mcp
       uri = params["uri"]
       raise ArgumentError, "Unknown resource: #{uri}" unless uri == "sms://inbox"
 
-      messages = sim_card.messages.recent_first.limit(50).map(&:as_mcp_json)
+      messages = SmsRelay.recent(sim_card.id, limit: 50).map { |e| message_json(e) }
       {
         contents: [
           {
@@ -209,25 +202,27 @@ module Mcp
         },
         {
           name: "list_messages",
-          description: "List recent SMS messages (sent and received) for the shared SIM, newest first.",
+          description: "List recent in-flight SMS (sent and received) for the shared SIM, newest first. " \
+                       "Messages are relayed in memory and not stored, so only the last few minutes are visible.",
           inputSchema: {
             type: "object",
             properties: {
               direction: { type: "string", enum: %w[inbound outbound all], description: "Filter by direction. Default all." },
-              limit: { type: "integer", description: "Max messages to return (1-100). Default 20." },
-              since: { type: "string", description: "ISO8601 timestamp; only messages created after this time." }
+              limit: { type: "integer", description: "Max messages to return (1-100). Default #{DEFAULT_LIMIT}." },
+              since: { type: "string", description: "ISO8601 timestamp; only messages after this time." }
             }
           }
         },
         {
           name: "wait_for_sms",
-          description: "Block until a new inbound SMS arrives, then return it. Push-style: " \
-                       "the call holds until a text comes in or the timeout elapses.",
+          description: "Check for newly arrived inbound SMS and return immediately (non-blocking). " \
+                       "If none have arrived it returns pending:true with a `checked_at` time — call " \
+                       "again, passing that as `since`, to keep waiting for the next text.",
           inputSchema: {
             type: "object",
             properties: {
-              timeout_seconds: { type: "integer", description: "How long to wait (1-#{MAX_WAIT}s). Default #{DEFAULT_WAIT}." },
-              since: { type: "string", description: "ISO8601; return inbound messages after this time. Defaults to now (the call start)." }
+              since: { type: "string", description: "ISO8601; return inbound messages after this time. " \
+                                                    "Pass the previous response's `checked_at` to get only newer ones." }
             }
           }
         }
@@ -235,6 +230,25 @@ module Mcp
     end
 
     # ---- helpers ---------------------------------------------------------
+
+    # The shape returned to MCP agents. `entry` is an SmsRelay::Inbound/Outbound.
+    def message_json(entry)
+      if entry.is_a?(SmsRelay::Inbound)
+        {
+          id: entry.id, direction: "inbound",
+          from: entry.from, to: sim_card.phone_number,
+          body: entry.body, status: "received",
+          timestamp: entry.received_at.iso8601
+        }
+      else
+        {
+          id: entry.id, direction: "outbound",
+          from: sim_card.phone_number, to: entry.to,
+          body: entry.body, status: entry.status,
+          timestamp: (entry.updated_at || entry.created_at).iso8601
+        }
+      end.compact
+    end
 
     # MCP tool result with both a human-readable text block and machine-readable
     # structuredContent (for clients that support it).
@@ -261,10 +275,6 @@ module Mcp
       Time.zone.parse(value.to_s)
     rescue ArgumentError
       nil
-    end
-
-    def monotonic_now
-      Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
   end
 

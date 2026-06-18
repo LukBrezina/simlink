@@ -2,23 +2,22 @@ module Api
   module V1
     class MessagesController < Api::BaseController
       # Phone reports the result of sending an outbound message.
-      # POST /api/v1/messages/:id/status  { status: sent|failed, error?, provider_message_id? }
+      # POST /api/v1/messages/:id/status  { status: sent|failed, error? }
       def status
-        message = device_messages.find_by(id: params[:id])
-        return render(json: { error: "not_found" }, status: :not_found) unless message
-
         new_status = params[:status].to_s
         unless %w[sent failed].include?(new_status)
           return render(json: { error: "invalid status" }, status: :unprocessable_entity)
         end
 
-        message.update!(
+        entry = SmsRelay.update_status(
+          params[:id].to_i,
           status: new_status,
           error: params[:error].presence,
-          provider_message_id: params[:provider_message_id].presence,
-          sent_at: (new_status == "sent" ? Time.current : message.sent_at)
+          sim_card_ids: device_sim_ids
         )
-        render json: { ok: true, id: message.id, status: message.status }
+        return render(json: { error: "not_found" }, status: :not_found) unless entry
+
+        render json: { ok: true, id: entry.id, status: entry.status }
       end
 
       # Phone reports an incoming SMS.
@@ -33,20 +32,19 @@ module Api
           return render(json: { error: "from and body required" }, status: :unprocessable_entity)
         end
 
-        message = sim.messages.create!(
-          direction: "inbound",
-          address: from,
+        entry = SmsRelay.add_inbound(
+          sim_card_id: sim.id,
+          from: from,
           body: body,
-          status: "received",
-          received_at: parse_time(params[:received_at]) || Time.current
+          received_at: parse_time(params[:received_at])
         )
-        render json: { ok: true, id: message.id }, status: :created
+        render json: { ok: true, id: entry.id }, status: :created
       end
 
       private
 
-      def device_messages
-        Message.joins(:sim_card).where(sim_cards: { device_id: current_device.id })
+      def device_sim_ids
+        current_device.sim_cards.pluck(:id)
       end
 
       def parse_time(value)

@@ -1,14 +1,14 @@
 # Streamable HTTP transport for the MCP server.
 #
 #   POST /mcp            JSON-RPC request(s)  -> JSON-RPC response (or 202 for notifications)
-#   GET  /mcp            -> text/event-stream of server notifications (push)
 #   DELETE /mcp          -> end session (no-op, we are stateless)
 #
 # Auth: `Authorization: Bearer <mcp_token>` (preferred) or a `/mcp/:token` path
 # / `?token=` for clients that can only store a URL.
+#
+# Every request returns immediately — no long-lived connections. Agents that want
+# to wait for an inbound SMS call wait_for_sms repeatedly (it's non-blocking).
 class McpController < ActionController::Base
-  include ActionController::Live
-
   skip_forgery_protection
 
   before_action :authenticate_mcp!
@@ -30,34 +30,6 @@ class McpController < ActionController::Base
       return head(:accepted) if response_body_hash.nil?
       render json: response_body_hash
     end
-  end
-
-  # GET: open an SSE stream and push notifications/resources/updated whenever a
-  # new inbound SMS lands. Bonus channel — most agent hosts don't act on these.
-  def stream
-    response.headers["Content-Type"] = "text/event-stream"
-    response.headers["Cache-Control"] = "no-cache"
-    response.headers["X-Accel-Buffering"] = "no"
-    set_session_header
-
-    sim = @mcp_token.sim_card
-    last_id = sim.messages.inbound.maximum(:id) || 0
-    deadline = monotonic_now + 600
-    write_comment("connected")
-
-    loop do
-      sim.messages.inbound.where("id > ?", last_id).order(:id).each do |m|
-        last_id = m.id
-        write_event(jsonrpc: "2.0", method: "notifications/resources/updated", params: { uri: "sms://inbox" })
-      end
-      break if monotonic_now >= deadline
-      write_comment("keepalive")
-      sleep 2
-    end
-  rescue ActionController::Live::ClientDisconnected, IOError, Errno::EPIPE
-    # client disconnected; nothing to do
-  ensure
-    response.stream.close
   end
 
   # DELETE: clients may end a session. We are stateless, so just acknowledge.
@@ -93,17 +65,5 @@ class McpController < ActionController::Base
 
   def render_error(id, code, message, status: :ok)
     render json: { jsonrpc: "2.0", id: id, error: { code: code, message: message } }, status: status
-  end
-
-  def write_event(obj)
-    response.stream.write("data: #{obj.to_json}\n\n")
-  end
-
-  def write_comment(text)
-    response.stream.write(": #{text}\n\n")
-  end
-
-  def monotonic_now
-    Process.clock_gettime(Process::CLOCK_MONOTONIC)
   end
 end

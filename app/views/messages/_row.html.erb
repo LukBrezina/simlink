@@ -1,9 +1,9 @@
 <%
-  inbound = message.inbound?
+  inbound = message[:direction] == "inbound"
   status_color = {
     "queued" => "text-amber-600", "sending" => "text-amber-600",
     "sent" => "text-green-600", "failed" => "text-red-600", "received" => "text-blue-600"
-  }[message.status] || "text-gray-500"
+  }[message[:status]] || "text-gray-500"
 %>
 <div class="p-3 flex items-start gap-3">
   <span class="flex-none mt-1 text-xs font-medium <%= inbound ? 'text-blue-600' : 'text-gray-400' %>">
@@ -11,12 +11,12 @@
   </span>
   <div class="flex-1 min-w-0">
     <div class="flex items-center justify-between gap-2">
-      <p class="font-medium truncate"><%= inbound ? message.address : message.address %></p>
-      <span class="flex-none text-xs <%= status_color %>"><%= message.status %></span>
+      <p class="font-medium truncate"><%= message[:peer] %></p>
+      <span class="flex-none text-xs <%= status_color %>"><%= message[:status] %></span>
     </div>
-    <p class="text-sm text-gray-700 break-words"><%= message.body %></p>
+    <p class="text-sm text-gray-700 break-words"><%= message[:body] %></p>
     <p class="text-xs text-gray-400 mt-0.5">
-      <%= message.sim_card.display_name %> · <%= time_ago_in_words(message.created_at) %> ago
+      <%= message[:sim_name] %> · <%= time_ago_in_words(message[:at]) %> ago
     </p>
   </div>
 </div>

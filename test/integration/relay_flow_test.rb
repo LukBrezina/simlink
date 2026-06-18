@@ -1,9 +1,10 @@
 require "test_helper"
 
 # Exercises the full loop: agent (MCP) -> server -> phone (device API) -> server
-# -> agent. No running server needed.
+# -> agent. Messages are relayed in memory (SmsRelay), never stored.
 class RelayFlowTest < ActionDispatch::IntegrationTest
   setup do
+    SmsRelay.reset!
     @user = User.create!(email_address: "loop@example.com", password: "password123")
     @device = @user.devices.create!(name: "Test Phone", platform: "android")
     @device_token = @device.token # plaintext available right after create
@@ -15,6 +16,8 @@ class RelayFlowTest < ActionDispatch::IntegrationTest
     @mcp_token = @mcp.token
   end
 
+  teardown { SmsRelay.reset! }
+
   def mcp_call(method, params = {}, id: 1)
     body = { jsonrpc: "2.0", id: id, method: method, params: params }.to_json
     post "/mcp", params: body,
@@ -23,8 +26,7 @@ class RelayFlowTest < ActionDispatch::IntegrationTest
   end
 
   def tool(name, args = {})
-    res = mcp_call("tools/call", { name: name, arguments: args })
-    res.dig("result")
+    mcp_call("tools/call", { name: name, arguments: args }).dig("result")
   end
 
   test "mcp initialize advertises tools and server info" do
@@ -46,26 +48,28 @@ class RelayFlowTest < ActionDispatch::IntegrationTest
     # 1. Agent sends
     result = tool("send_sms", { to: "+420123456789", body: "hello" })
     refute result["isError"], "send_sms should succeed"
-    msg = Message.last
-    assert_equal "queued", msg.status
-    assert_equal "outbound", msg.direction
-    assert_equal @mcp, msg.mcp_token
+    sent = result.dig("structuredContent")
+    assert_equal "outbound", sent["direction"]
+    assert_equal "queued", sent["status"]
+    msg_id = sent["id"]
 
-    # 2. Phone polls the outbox (claims it -> sending)
-    get "/api/v1/outbox", params: { timeout_seconds: 1 },
-        headers: { "Authorization" => "Bearer #{@device_token}" }
+    # 2. Phone pulls the outbox (claims it -> sending), non-blocking
+    get "/api/v1/outbox", headers: { "Authorization" => "Bearer #{@device_token}" }
     assert_response :success
     claimed = JSON.parse(@response.body)["messages"]
     assert_equal 1, claimed.size
     assert_equal @sim.subscription_id, claimed.first["subscription_id"]
-    assert_equal "sending", msg.reload.status
+    assert_equal msg_id, claimed.first["id"]
+
+    # A second pull gets nothing — already claimed.
+    get "/api/v1/outbox", headers: { "Authorization" => "Bearer #{@device_token}" }
+    assert_empty JSON.parse(@response.body)["messages"]
 
     # 3. Phone reports it sent
-    post "/api/v1/messages/#{msg.id}/status", params: { status: "sent" },
+    post "/api/v1/messages/#{msg_id}/status", params: { status: "sent" },
          headers: { "Authorization" => "Bearer #{@device_token}" }
     assert_response :success
-    assert_equal "sent", msg.reload.status
-    assert msg.sent_at.present?
+    assert_equal "sent", JSON.parse(@response.body)["status"]
   end
 
   test "inbound: phone reports a received SMS, agent reads it" do
@@ -82,29 +86,38 @@ class RelayFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "wait_for_sms returns an inbound message that arrived after `since`" do
-    travel_to Time.current do
-      since = 1.minute.ago.iso8601
-      @sim.messages.create!(direction: "inbound", address: "+420555", body: "ping",
-                            status: "received", received_at: Time.current)
-      result = tool("wait_for_sms", { since: since, timeout_seconds: 2 })
-      messages = result.dig("structuredContent", "messages")
-      assert_equal 1, messages.size
-      assert_equal "ping", messages.first["body"]
-    end
+    since = 1.minute.ago.iso8601
+    post "/api/v1/inbound",
+         params: { subscription_id: @sim.subscription_id, from: "+420555", body: "ping" },
+         headers: { "Authorization" => "Bearer #{@device_token}" }
+
+    result = tool("wait_for_sms", { since: since })
+    messages = result.dig("structuredContent", "messages")
+    assert_equal 1, messages.size
+    assert_equal "ping", messages.first["body"]
   end
 
-  test "wait_for_sms times out cleanly when nothing arrives" do
-    result = tool("wait_for_sms", { timeout_seconds: 1 })
-    assert_equal true, result.dig("structuredContent", "timed_out")
+  test "wait_for_sms is non-blocking and reports pending when nothing new" do
+    result = tool("wait_for_sms", { since: Time.current.iso8601 })
+    assert_equal true, result.dig("structuredContent", "pending")
     assert_empty result.dig("structuredContent", "messages")
+    assert result.dig("structuredContent", "checked_at").present?
   end
 
   test "device cannot claim another device's messages" do
+    tool("send_sms", { to: "+420123456789", body: "for-owner" })
+
     other_user = User.create!(email_address: "other@example.com", password: "password123")
     other_device = other_user.devices.create!(name: "Other", platform: "android")
-    get "/api/v1/outbox", params: { timeout_seconds: 1 },
-        headers: { "Authorization" => "Bearer #{other_device.token}" }
+    get "/api/v1/outbox", headers: { "Authorization" => "Bearer #{other_device.token}" }
     assert_response :success
     assert_empty JSON.parse(@response.body)["messages"]
+  end
+
+  test "phone can register its FCM token" do
+    post "/api/v1/fcm_token", params: { fcm_token: "fcm-abc-123" },
+         headers: { "Authorization" => "Bearer #{@device_token}" }
+    assert_response :success
+    assert_equal "fcm-abc-123", @device.reload.fcm_token
   end
 end

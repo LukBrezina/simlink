@@ -1,53 +1,27 @@
 module Api
   module V1
-    # Long-poll endpoint the phone calls in a loop. Returns queued outbound SMS
-    # for this device's shared SIMs, atomically claiming them (queued -> sending)
-    # so the phone can send them. Blocks up to `timeout_seconds` if none waiting.
+    # Non-blocking endpoint the phone hits (FCM-woken, plus a slow fallback poll).
+    # Returns and atomically claims (queued -> sending) any outbound SMS for this
+    # device's shared SIMs. Returns immediately — it never holds the connection.
     class OutboxController < Api::BaseController
-      MAX_TIMEOUT = 60
-      POLL_INTERVAL = 1.5
-
       def index
-        timeout = [ [ params.fetch(:timeout_seconds, 25).to_i, 1 ].max, MAX_TIMEOUT ].min
-        deadline = monotonic_now + timeout
-
-        loop do
-          claimed = claim_queued
-          return render(json: { messages: claimed.map { |m| outbound_json(m) } }) if claimed.any?
-          break if monotonic_now >= deadline
-          sleep [ POLL_INTERVAL, deadline - monotonic_now ].min
-        end
-
-        render json: { messages: [] }
+        claimed = SmsRelay.claim_outbound(shared_sim_ids)
+        render json: { messages: claimed.map { |m| outbound_json(m) } }
       end
 
       private
 
-      def claim_queued
-        Message.transaction do
-          messages = Message.queued
-                            .joins(:sim_card)
-                            .where(sim_cards: { device_id: current_device.id, shared: true })
-                            .order(:created_at)
-                            .limit(20)
-                            .lock
-                            .to_a
-          messages.each { |m| m.update_columns(status: "sending", updated_at: Time.current) }
-          messages
-        end
+      def shared_sim_ids
+        current_device.sim_cards.shared.pluck(:id)
       end
 
-      def outbound_json(message)
+      def outbound_json(entry)
         {
-          id: message.id,
-          subscription_id: message.sim_card.subscription_id,
-          to: message.address,
-          body: message.body
+          id: entry.id,
+          subscription_id: entry.subscription_id,
+          to: entry.to,
+          body: entry.body
         }
-      end
-
-      def monotonic_now
-        Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end
     end
   end

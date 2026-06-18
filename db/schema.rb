@@ -10,10 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_18_104952) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_18_110001) do
   create_table "devices", force: :cascade do |t|
     t.string "app_version"
     t.datetime "created_at", null: false
+    t.string "fcm_token"
     t.datetime "last_seen_at"
     t.string "name", null: false
     t.string "platform", default: "android", null: false
@@ -37,25 +38,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_104952) do
     t.index ["sim_card_id"], name: "index_mcp_tokens_on_sim_card_id"
     t.index ["token_digest"], name: "index_mcp_tokens_on_token_digest", unique: true
     t.index ["user_id"], name: "index_mcp_tokens_on_user_id"
-  end
-
-  create_table "messages", force: :cascade do |t|
-    t.string "address", null: false
-    t.text "body", null: false
-    t.datetime "created_at", null: false
-    t.string "direction", null: false
-    t.string "error"
-    t.integer "mcp_token_id"
-    t.string "provider_message_id"
-    t.datetime "received_at"
-    t.datetime "sent_at"
-    t.integer "sim_card_id", null: false
-    t.string "status", null: false
-    t.datetime "updated_at", null: false
-    t.index ["mcp_token_id"], name: "index_messages_on_mcp_token_id"
-    t.index ["sim_card_id", "created_at"], name: "index_messages_on_sim_card_id_and_created_at"
-    t.index ["sim_card_id", "direction", "status"], name: "index_messages_on_sim_card_id_and_direction_and_status"
-    t.index ["sim_card_id"], name: "index_messages_on_sim_card_id"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -92,8 +74,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_104952) do
   add_foreign_key "devices", "users"
   add_foreign_key "mcp_tokens", "sim_cards"
   add_foreign_key "mcp_tokens", "users"
-  add_foreign_key "messages", "mcp_tokens"
-  add_foreign_key "messages", "sim_cards"
   add_foreign_key "sessions", "users"
   add_foreign_key "sim_cards", "devices"
 end
