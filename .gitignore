@@ -47,3 +47,6 @@
 /android/.idea/
 *.jks
 *.keystore
+
+# Firebase service-account keys — never commit
+*firebase-adminsdk*.json
