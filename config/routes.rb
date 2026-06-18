@@ -40,5 +40,9 @@ Rails.application.routes.draw do
 
   get "up" => "rails/health#show", as: :rails_health_check
 
-  root "dashboards#show"
+  # Public marketing + agent-discovery pages
+  get "for/:slug", to: "pages#agent", as: :agent_guide
+  get "llms.txt",  to: "pages#llms", format: false
+
+  root "pages#home"
 end
