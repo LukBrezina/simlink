@@ -91,7 +91,11 @@ module Fcm
         exp:   now + 3600
       }.to_json)
       signing_input = "#{header}.#{claims}"
-      key = OpenSSL::PKey::RSA.new(service_account["private_key"])
+      # The PEM's newlines can arrive double-escaped (\\n) after passing through
+      # .env -> Kamal -> docker env-file; normalize them back to real newlines so
+      # OpenSSL can parse the key. No-op if they're already real newlines.
+      pem = service_account["private_key"].to_s.gsub('\n', "\n")
+      key = OpenSSL::PKey::RSA.new(pem)
       signature = base64url(key.sign(OpenSSL::Digest::SHA256.new, signing_input))
       "#{signing_input}.#{signature}"
     end
