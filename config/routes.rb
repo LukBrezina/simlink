@@ -4,8 +4,9 @@ Rails.application.routes.draw do
   resource :registration, only: %i[new create]
   resources :passwords, param: :token
 
-  # --- Public "get the app" page ---
+  # --- Public "get the app" page + signed APK download ---
   get "get", to: "downloads#show", as: :get_app
+  get "simlink.apk", to: "downloads#apk", as: :apk_download
 
   # --- Web UI (rendered in the Hotwire Native app) ---
   resource :dashboard, only: :show
