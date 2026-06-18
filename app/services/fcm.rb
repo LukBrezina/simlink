@@ -1,3 +1,11 @@
+# Rails 8 doesn't autoload these stdlibs; require them explicitly (Net::HTTP in
+# particular is not loaded, which raised NameError and silently disabled push).
+require "net/http"
+require "uri"
+require "openssl"
+require "base64"
+require "json"
+
 # Firebase Cloud Messaging "wake" pings.
 #
 # When an agent queues an outbound SMS we send the phone a CONTENT-FREE, high
