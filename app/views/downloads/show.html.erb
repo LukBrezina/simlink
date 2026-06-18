@@ -9,10 +9,10 @@
 </div>
 
 <!-- Download -->
-<a href="/simlink.apk" download
-   class="block text-center rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-3.5 mb-2">
+<%= link_to apk_download_path, download: "simlink.apk",
+      class: "block text-center rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-3.5 mb-2" do %>
   ⬇ Download the Android app (.apk)
-</a>
+<% end %>
 <p class="text-center text-xs text-gray-400 mb-8">
   Android only · sideloaded · ~18&nbsp;MB. iOS can't send SMS, so there's no iOS app.
 </p>

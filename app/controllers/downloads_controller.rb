@@ -10,6 +10,8 @@ class DownloadsController < ApplicationController
     path = Rails.root.join("downloads/simlink.apk")
     return head(:not_found) unless File.exist?(path)
 
+    # Short cache so a new app version can't be masked by a stale edge cache.
+    expires_in 5.minutes, public: true
     send_file path,
               type: "application/vnd.android.package-archive",
               disposition: "attachment",
