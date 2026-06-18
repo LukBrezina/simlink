@@ -1,0 +1,46 @@
+<% content_for :title, "Connect phone" %>
+
+<h1 class="text-2xl font-bold mb-1">Connect this phone</h1>
+<p class="text-gray-500 text-sm mb-6">Pairing lets the app send & receive SMS for your agents in the background.</p>
+
+<% if @connected_token %>
+  <!-- Bridge component hands the token to the native layer automatically -->
+  <div data-controller="bridge--device"
+       data-bridge--device-token-value="<%= @connected_token %>"
+       data-bridge--device-name-value="My phone"
+       class="rounded-xl border-2 border-green-300 bg-green-50 p-4 mb-6">
+    <p class="font-semibold text-green-800 mb-1">Phone connected ✓</p>
+    <p class="text-sm text-green-700 mb-3">
+      The app stored its device token. If you're testing in a browser, copy it for the device API:
+    </p>
+    <%= render "shared/copy_field", label: "Device token", value: @connected_token %>
+  </div>
+<% end %>
+
+<div class="rounded-xl border border-gray-200 bg-white p-4 mb-6">
+  <div class="flex items-center gap-3 mb-3">
+    <span class="inline-block w-2.5 h-2.5 rounded-full <%= @device&.last_seen_at && @device.last_seen_at > 2.minutes.ago ? 'bg-green-500' : 'bg-gray-300' %>"></span>
+    <div>
+      <p class="font-medium"><%= @device&.name || "No phone yet" %></p>
+      <p class="text-xs text-gray-400">
+        <%= @device&.last_seen_at ? "Last seen #{time_ago_in_words(@device.last_seen_at)} ago" : "Never connected" %>
+      </p>
+    </div>
+  </div>
+
+  <%= button_to (@device ? "Reconnect (new token)" : "Connect phone"),
+        pairing_path, method: :post,
+        class: "w-full rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2.5 cursor-pointer" %>
+  <p class="text-xs text-gray-400 mt-2">
+    Reconnecting issues a fresh token and signs out the old one.
+  </p>
+</div>
+
+<div class="rounded-xl bg-gray-100 p-4 text-sm text-gray-600">
+  <p class="font-semibold mb-1">Next steps after connecting</p>
+  <ol class="list-decimal list-inside space-y-1">
+    <li>Grant SMS permissions when the app asks.</li>
+    <li><%= link_to "Share a SIM", sim_cards_path, class: "text-blue-700 underline" %>.</li>
+    <li><%= link_to "Create an agent token", setup_path, class: "text-blue-700 underline" %>.</li>
+  </ol>
+</div>

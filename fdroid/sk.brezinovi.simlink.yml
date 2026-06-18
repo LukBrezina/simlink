@@ -1,0 +1,34 @@
+# F-Droid build recipe for SMS for Agents.
+#
+# To get the app into F-Droid, submit this file as metadata/sk.brezinovi.simlink.yml
+# via a merge request (a "Request For Packaging") to:
+#   https://gitlab.com/fdroid/fdroiddata
+# Replace YOUR_GH_USER with your GitHub username and tag a matching release first.
+
+Categories:
+  - Internet
+License: MIT
+AuthorName: SMS for Agents contributors
+SourceCode: https://github.com/YOUR_GH_USER/sms-for-agents
+IssueTracker: https://github.com/YOUR_GH_USER/sms-for-agents/issues
+
+AutoName: SimLink
+
+RepoType: git
+Repo: https://github.com/YOUR_GH_USER/sms-for-agents.git
+
+Builds:
+  - versionName: "0.1.0"
+    versionCode: 1
+    commit: v0.1.0
+    subdir: android/app
+    gradle:
+      - yes
+    # No keystore.properties on F-Droid's builders, so the release type is
+    # produced unsigned; F-Droid signs it with the F-Droid key.
+    output: app/build/outputs/apk/release/app-release-unsigned.apk
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags
+CurrentVersion: "0.1.0"
+CurrentVersionCode: 1

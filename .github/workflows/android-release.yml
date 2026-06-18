@@ -1,0 +1,64 @@
+name: Android Release
+
+# Tag a release (e.g. `git tag v0.1.0 && git push --tags`) to build a signed APK
+# and publish it as a GitHub Release. Obtainium tracks these releases for updates.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   KEYSTORE_BASE64   - `base64 -i android/release.jks | pbcopy` (the keystore, base64)
+#   KEYSTORE_PASSWORD - store password
+#   KEY_ALIAS         - key alias (e.g. smsforagents)
+#   KEY_PASSWORD      - key password
+#
+# Prerequisite: commit the Gradle wrapper (android/gradlew + android/gradle/wrapper/
+# gradle-wrapper.jar). Generate it once with `cd android && gradle wrapper` or by
+# opening the project in Android Studio.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/release.jks
+
+      - name: Write keystore.properties
+        run: |
+          cat > android/keystore.properties <<EOF
+          storeFile=release.jks
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          EOF
+
+      - name: Build signed release APK
+        working-directory: android
+        env:
+          VERSION_NAME: ${{ github.ref_name }}
+          VERSION_CODE: ${{ github.run_number }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: android/app/build/outputs/apk/release/app-release.apk
+          generate_release_notes: true
+
+      - name: Clean up signing material
+        if: always()
+        run: rm -f android/release.jks android/keystore.properties

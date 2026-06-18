@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html class="h-full bg-gray-50">
+  <head>
+    <title><%= content_for(:title) || "SimLink" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="SimLink">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1d4ed8">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="h-full text-gray-900 antialiased">
+    <% if authenticated? %>
+      <header class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div class="mx-auto max-w-2xl px-4 h-14 flex items-center justify-between">
+          <%= link_to root_path, class: "font-bold text-blue-700 flex items-center gap-2" do %>
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-600"></span> SimLink
+          <% end %>
+          <nav class="flex items-center gap-4 text-sm">
+            <%= link_to "Home", root_path, class: "text-gray-600 hover:text-gray-900" %>
+            <%= link_to "Messages", messages_path, class: "text-gray-600 hover:text-gray-900" %>
+            <%= link_to "Connect", setup_path, class: "text-gray-600 hover:text-gray-900" %>
+            <%= button_to "Sign out", session_path, method: :delete, class: "text-gray-400 hover:text-red-600 cursor-pointer" %>
+          </nav>
+        </div>
+      </header>
+    <% end %>
+
+    <main class="mx-auto max-w-2xl px-4 py-6">
+      <%= render "shared/flash" %>
+      <%= yield %>
+    </main>
+  </body>
+</html>

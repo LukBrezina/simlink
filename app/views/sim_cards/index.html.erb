@@ -1,0 +1,34 @@
+<% content_for :title, "SIM cards" %>
+
+<h1 class="text-2xl font-bold mb-1">Shared SIM cards</h1>
+<p class="text-gray-500 text-sm mb-6">Turn on the SIM(s) you want agents to send & receive on. Everything else stays private.</p>
+
+<% if @sim_cards.any? %>
+  <div class="space-y-3">
+    <% @sim_cards.each do |sim| %>
+      <div class="rounded-xl border <%= sim.shared? ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white' %> p-4 flex items-center justify-between">
+        <div class="min-w-0">
+          <p class="font-medium truncate"><%= sim.display_name %></p>
+          <p class="text-xs text-gray-400">
+            <%= [sim.carrier_name.presence, ("slot #{sim.slot_index}" if sim.slot_index)].compact.join(" · ") %>
+          </p>
+        </div>
+        <%= button_to share_sim_card_path(sim, shared: !sim.shared?), method: :patch,
+              class: "flex-none rounded-lg px-3 py-1.5 text-sm font-medium cursor-pointer #{sim.shared? ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" do %>
+          <%= sim.shared? ? "Shared ✓" : "Share" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <div class="rounded-xl border border-dashed border-gray-300 p-8 text-center">
+    <p class="text-gray-500 mb-2">No SIM cards reported yet.</p>
+    <p class="text-sm text-gray-400">Open the Android app and grant permissions — your SIMs will appear here.</p>
+    <%= link_to "Connect phone", pairing_path, class: "inline-block mt-4 text-blue-700 font-medium" %>
+  </div>
+<% end %>
+
+<% if @sim_cards.shared.any? %>
+  <%= link_to "Next: connect an agent →", setup_path,
+        class: "block text-center mt-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2.5" %>
+<% end %>

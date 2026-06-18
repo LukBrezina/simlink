@@ -1,0 +1,47 @@
+# Kamal deploy config for SimLink — mirrors the bezosy setup (same server +
+# local registry). Deploy with: bin/kamal setup (first time) / bin/kamal deploy.
+
+service: simlink
+image: simlink
+
+servers:
+  web:
+    # server.brezinovi.sk is Cloudflare-proxied (port 22 is not reachable), so set
+    # SIMLINK_SSH_HOST=<origin IP> in .env for Kamal's SSH. Keeps the IP out of git.
+    - <%= ENV["SIMLINK_SSH_HOST"] || "server.brezinovi.sk" %>
+
+# kamal-proxy terminates TLS (Let's Encrypt) and lets several apps share the box.
+# Requires config.assume_ssl + config.force_ssl in production.rb (already on).
+proxy:
+  ssl: true
+  host: simlink.brezinovi.sk
+
+# Local registry on the server (same as bezosy). Unauthenticated.
+registry:
+  server: localhost:5555
+
+# Server is amd64; this Mac is arm64, so cross-build (buildx/emulation).
+builder:
+  arch: amd64
+
+env:
+  clear:
+    SOLID_QUEUE_IN_PUMA: true   # run jobs inside Puma (no separate job host)
+  secret:
+    - RAILS_MASTER_KEY
+    - AR_ENCRYPTION_PRIMARY_KEY
+    - AR_ENCRYPTION_DETERMINISTIC_KEY
+    - AR_ENCRYPTION_KEY_DERIVATION_SALT
+
+aliases:
+  console: app exec --interactive --reuse "bin/rails console"
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs -f
+  dbc: app exec --interactive --reuse "bin/rails dbconsole"
+
+# SQLite databases live here — a named volume persists them across deploys.
+# BACK THIS UP.
+volumes:
+  - "simlink_storage:/rails/storage"
+
+asset_path: /rails/public/assets

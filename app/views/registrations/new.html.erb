@@ -1,0 +1,37 @@
+<% content_for :title, "Create account" %>
+<div class="mt-10">
+  <h1 class="text-2xl font-bold mb-1">Create your account</h1>
+  <p class="text-gray-500 text-sm mb-6">One account controls your shared SIM and the agents that can use it.</p>
+
+  <%= form_with model: @user, url: registration_path, class: "space-y-4" do |form| %>
+    <% if @user.errors.any? %>
+      <div class="py-2 px-3 rounded-lg bg-red-50 text-red-700 text-sm">
+        <%= @user.errors.full_messages.to_sentence %>
+      </div>
+    <% end %>
+
+    <div>
+      <%= form.label :email_address, "Email", class: "block text-sm font-medium mb-1" %>
+      <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username",
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-blue-600" %>
+    </div>
+    <div>
+      <%= form.label :password, "Password", class: "block text-sm font-medium mb-1" %>
+      <%= form.password_field :password, required: true, autocomplete: "new-password", minlength: 8,
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-blue-600" %>
+      <p class="text-xs text-gray-400 mt-1">At least 8 characters.</p>
+    </div>
+    <div>
+      <%= form.label :password_confirmation, "Confirm password", class: "block text-sm font-medium mb-1" %>
+      <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password",
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-blue-600" %>
+    </div>
+
+    <%= form.submit "Create account",
+          class: "w-full rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2.5 cursor-pointer" %>
+  <% end %>
+
+  <p class="text-sm text-gray-500 mt-6 text-center">
+    Already have an account? <%= link_to "Sign in", new_session_path, class: "text-blue-700 underline" %>
+  </p>
+</div>

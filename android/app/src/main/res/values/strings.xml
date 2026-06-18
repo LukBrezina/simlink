@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SimLink</string>
+    <string name="relay_channel_name">SMS relay</string>
+    <string name="relay_notification_title">SimLink is active</string>
+    <string name="relay_notification_text">Relaying SMS for your agents.</string>
+</resources>

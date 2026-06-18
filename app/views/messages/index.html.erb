@@ -1,0 +1,33 @@
+<% content_for :title, "Messages" %>
+
+<h1 class="text-2xl font-bold mb-4">Messages</h1>
+
+<% if @sim_cards.any? %>
+  <details class="rounded-xl border border-gray-200 bg-white p-4 mb-6">
+    <summary class="cursor-pointer font-medium text-blue-700">Send a test SMS</summary>
+    <%= form_with url: messages_path, method: :post, class: "space-y-3 mt-3" do |f| %>
+      <% if @sim_cards.size > 1 %>
+        <%= f.select :sim_card_id, @sim_cards.map { |s| [s.display_name, s.id] },
+              {}, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 bg-white" %>
+      <% else %>
+        <%= f.hidden_field :sim_card_id, value: @sim_cards.first.id %>
+      <% end %>
+      <%= f.telephone_field :to, placeholder: "+420…", required: true,
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
+      <%= f.text_area :body, placeholder: "Message", rows: 2, required: true,
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
+      <%= f.submit "Queue message",
+            class: "w-full rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 cursor-pointer" %>
+    <% end %>
+  </details>
+<% end %>
+
+<div class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+  <% if @messages.any? %>
+    <% @messages.each do |m| %>
+      <%= render "messages/row", message: m %>
+    <% end %>
+  <% else %>
+    <p class="p-4 text-sm text-gray-400">No messages yet. They'll appear here once an agent sends one or a text arrives.</p>
+  <% end %>
+</div>

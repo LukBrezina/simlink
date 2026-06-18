@@ -1,0 +1,16 @@
+<%# locals: label, value, multiline (default false) %>
+<% multiline = local_assigns.fetch(:multiline, false) %>
+<div data-controller="clipboard" class="mb-3">
+  <div class="flex items-center justify-between mb-1">
+    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide"><%= label %></span>
+    <button type="button" data-action="clipboard#copy"
+            class="text-xs font-medium text-blue-700 hover:text-blue-900 cursor-pointer">Copy</button>
+  </div>
+  <% if multiline %>
+    <textarea data-clipboard-target="source" readonly rows="<%= value.to_s.lines.count.clamp(3, 16) %>"
+      class="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-xs text-gray-800 resize-none"><%= value %></textarea>
+  <% else %>
+    <input data-clipboard-target="source" type="text" readonly value="<%= value %>"
+      class="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-xs text-gray-800" />
+  <% end %>
+</div>

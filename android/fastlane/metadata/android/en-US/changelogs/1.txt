@@ -1,0 +1,2 @@
+First prototype: send & receive SMS via MCP (send_sms, list_messages,
+wait_for_sms), per-agent tokens, SIM picker, self-hostable server.

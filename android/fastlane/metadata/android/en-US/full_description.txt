@@ -1,0 +1,20 @@
+SMS for Agents turns your Android phone into an SMS gateway for AI agents you
+control. Create an account, pick a SIM to share, and the app gives you a Model
+Context Protocol (MCP) URL and token to paste into ChatGPT, Claude, or any
+MCP-capable agent. Each agent authenticates to your account, so only you can use
+your SIM.
+
+Features:
+
+* Send SMS — agents call a send_sms tool; your phone sends from your chosen SIM.
+* Receive SMS — incoming texts are forwarded to your agents.
+* Wait for SMS — a push-style tool that blocks until a new text arrives.
+* Per-agent tokens, each scoped to a single SIM, revocable at any time.
+* Self-hostable server: run your own backend so your messages never touch a
+  third party.
+
+This app needs SMS and phone permissions to send and receive on your behalf. It
+talks only to the server you connect it to. It is free software.
+
+Note: sending automated messages from a personal SIM may be rate-limited or
+blocked by your mobile carrier. Use responsibly and keep volumes low.
