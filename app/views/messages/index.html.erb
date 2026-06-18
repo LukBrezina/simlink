@@ -4,7 +4,7 @@
 
 <% if @sim_cards.any? %>
   <details class="rounded-xl border border-gray-200 bg-white p-4 mb-6">
-    <summary class="cursor-pointer font-medium text-blue-700">Send a test SMS</summary>
+    <summary class="cursor-pointer font-medium text-primary">Send a test SMS</summary>
     <%= form_with url: messages_path, method: :post, class: "space-y-3 mt-3" do |f| %>
       <% if @sim_cards.size > 1 %>
         <%= f.select :sim_card_id, @sim_cards.map { |s| [s.display_name, s.id] },
@@ -17,7 +17,7 @@
       <%= f.text_area :body, placeholder: "Message", rows: 2, required: true,
             class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
       <%= f.submit "Queue message",
-            class: "w-full rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 cursor-pointer" %>
+            class: "w-full rounded-lg bg-primary hover:bg-primary-light text-white font-medium px-4 py-2 cursor-pointer" %>
     <% end %>
   </details>
 <% end %>

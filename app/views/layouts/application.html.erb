@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html class="h-full bg-gray-50">
+<html class="h-full bg-cream">
   <head>
-    <title><%= content_for(:title) || "SimLink" %></title>
+    <title><%= content_for(:title) || "SimLink by Snáz.cz" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="application-name" content="SimLink">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#1d4ed8">
+    <meta name="theme-color" content="#1a5f4a">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= yield :head %>
@@ -14,6 +14,10 @@
     <link rel="icon" href="/icon.png" type="image/png">
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
@@ -23,8 +27,10 @@
     <% if authenticated? %>
       <header class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-200">
         <div class="mx-auto max-w-2xl px-4 h-14 flex items-center justify-between">
-          <%= link_to root_path, class: "font-bold text-blue-700 flex items-center gap-2" do %>
-            <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-600"></span> SimLink
+          <%= link_to root_path, class: "font-bold text-primary flex items-baseline gap-2" do %>
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-primary self-center"></span>
+            <span>SimLink</span>
+            <span class="font-normal text-xs text-gray-400">by Snáz.cz</span>
           <% end %>
           <nav class="flex items-center gap-4 text-sm">
             <%= link_to "Home", root_path, class: "text-gray-600 hover:text-gray-900" %>
@@ -40,5 +46,9 @@
       <%= render "shared/flash" %>
       <%= yield %>
     </main>
+
+    <footer class="mx-auto max-w-2xl px-4 py-8 text-center text-xs text-gray-400">
+      SimLink — SMS for AI agents · by <span class="text-primary font-medium">Snáz.cz</span>
+    </footer>
   </body>
 </html>

@@ -7,7 +7,7 @@
   <div class="rounded-xl border border-dashed border-gray-300 p-8 text-center">
     <p class="text-gray-600 mb-2 font-medium">Share a SIM first</p>
     <p class="text-sm text-gray-400 mb-4">Agents send & receive on a SIM you've shared.</p>
-    <%= link_to "Choose a SIM", sim_cards_path, class: "inline-block rounded-lg bg-blue-600 text-white font-medium px-4 py-2" %>
+    <%= link_to "Choose a SIM", sim_cards_path, class: "inline-block rounded-lg bg-primary text-white font-medium px-4 py-2" %>
   </div>
 <% else %>
   <!-- New token highlight -->
@@ -26,7 +26,7 @@
       <div>
         <%= f.label :name, "Name (which agent is this for?)", class: "block text-sm font-medium mb-1" %>
         <%= f.text_field :name, placeholder: "e.g. ChatGPT, Claude, my automation",
-              class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-blue-600" %>
+              class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-primary" %>
       </div>
       <div>
         <%= f.label :sim_card_id, "SIM", class: "block text-sm font-medium mb-1" %>
@@ -34,7 +34,7 @@
               {}, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 bg-white" %>
       </div>
       <%= f.submit "Create token",
-            class: "w-full rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2.5 cursor-pointer" %>
+            class: "w-full rounded-lg bg-primary hover:bg-primary-light text-white font-medium px-4 py-2.5 cursor-pointer" %>
     <% end %>
   </div>
 

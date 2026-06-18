@@ -7,24 +7,24 @@
     <div>
       <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username",
             placeholder: "you@example.com", value: params[:email_address],
-            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-blue-600" %>
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-primary" %>
     </div>
     <div>
       <%= form.password_field :password, required: true, autocomplete: "current-password",
             placeholder: "Password", maxlength: 72,
-            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-blue-600" %>
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-primary" %>
     </div>
     <%= form.submit "Sign in",
-          class: "w-full rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2.5 cursor-pointer" %>
+          class: "w-full rounded-lg bg-primary hover:bg-primary-light text-white font-medium px-4 py-2.5 cursor-pointer" %>
   <% end %>
 
   <div class="flex items-center justify-between text-sm mt-6">
-    <%= link_to "Create account", new_registration_path, class: "text-blue-700 font-medium" %>
+    <%= link_to "Create account", new_registration_path, class: "text-primary font-medium" %>
     <%= link_to "Forgot password?", new_password_path, class: "text-gray-500 underline hover:no-underline" %>
   </div>
 
   <div class="mt-8 pt-6 border-t border-gray-100 text-center">
     <p class="text-sm text-gray-500 mb-2">New here? SimLink runs on your Android phone.</p>
-    <%= link_to "📱 Get the app", get_app_path, class: "inline-block rounded-lg border border-blue-600 text-blue-700 font-medium px-4 py-2" %>
+    <%= link_to "📱 Get the app", get_app_path, class: "inline-block rounded-lg border border-primary text-primary font-medium px-4 py-2" %>
   </div>
 </div>

@@ -12,12 +12,12 @@
 
 <% if !hotwire_native_app? && !step1_done %>
   <!-- Browser visitor without a connected phone: point them to the app -->
-  <div class="rounded-xl border-2 border-blue-200 bg-blue-50 p-4 mb-6 flex items-center justify-between gap-3">
+  <div class="rounded-xl border-2 border-primary/20 bg-primary/5 p-4 mb-6 flex items-center justify-between gap-3">
     <div class="min-w-0">
       <p class="font-medium">Get the SimLink app</p>
       <p class="text-sm text-gray-600">SMS happens on your phone. Install the app to connect.</p>
     </div>
-    <%= link_to "Download", get_app_path, class: "flex-none rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-3.5 py-2" %>
+    <%= link_to "Download", get_app_path, class: "flex-none rounded-lg bg-primary hover:bg-primary-light text-white text-sm font-medium px-3.5 py-2" %>
   </div>
 <% end %>
 
@@ -36,7 +36,7 @@
       </p>
     </div>
   </div>
-  <%= link_to (step1_done ? "Manage" : "Connect"), pairing_path, class: "text-sm text-blue-700 font-medium" %>
+  <%= link_to (step1_done ? "Manage" : "Connect"), pairing_path, class: "text-sm text-primary font-medium" %>
 </div>
 
 <!-- Setup steps -->
@@ -58,7 +58,7 @@
 <!-- Recent messages -->
 <div class="flex items-center justify-between mb-2">
   <h2 class="font-semibold">Recent messages</h2>
-  <%= link_to "View all", messages_path, class: "text-sm text-blue-700" %>
+  <%= link_to "View all", messages_path, class: "text-sm text-primary" %>
 </div>
 <div class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
   <% if @recent_messages.any? %>

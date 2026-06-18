@@ -1,1 +1,168 @@
 @import "tailwindcss";
+
+/* ====================================================================== */
+/* Snáz.cz theme — shared visual identity with the Snáz portal.           */
+/* DM Serif Display (headings) + Outfit (body); green / amber / cream.    */
+/* ====================================================================== */
+@theme {
+  --font-serif: 'DM Serif Display', serif;
+  --font-sans: 'Outfit', sans-serif;
+
+  --color-primary: #1a5f4a;
+  --color-primary-light: #2d8a6c;
+  --color-primary-dark: #0f3d2f;
+  --color-accent: #e8a54b;
+  --color-accent-light: #f5c97d;
+  --color-accent-dark: #c78c3a;
+  --color-danger: #c44536;
+  --color-cream: #faf8f5;
+  --color-cream-dark: #f0ebe4;
+  --color-dark: #1a1a1a;
+  --color-dark-soft: #2d2d2d;
+}
+
+/* ==================== BASE ==================== */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-dark);
+  background: var(--color-cream);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-serif);
+  letter-spacing: 0.01em;
+}
+
+/* ==================== BUTTONS ==================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 100px;
+  transition: all 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-dark);
+  padding: 14px 28px;
+  box-shadow: 0 8px 30px rgba(232, 165, 75, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(232, 165, 75, 0.4);
+  background: var(--color-accent-light);
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--color-primary);
+  padding: 12px 24px;
+  border: 2px solid var(--color-cream-dark);
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ==================== SECTION LABEL ==================== */
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-primary);
+}
+
+.section-label::before {
+  content: '';
+  width: 24px;
+  height: 2px;
+  background: var(--color-primary);
+}
+
+/* ==================== HERO BADGE ==================== */
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid var(--color-cream-dark);
+  padding: 8px 16px;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #5c5c5c;
+}
+
+/* ==================== FORMS ==================== */
+.form-input {
+  width: 100%;
+  padding: 14px 18px;
+  border: 2px solid var(--color-cream-dark);
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  color: var(--color-dark);
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(26, 95, 74, 0.1);
+}
+
+.form-label {
+  display: block;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--color-dark);
+  margin-bottom: 6px;
+}
+
+/* ==================== FLASH ==================== */
+.flash-notice {
+  background: rgba(26, 95, 74, 0.1);
+  border: 1px solid rgba(26, 95, 74, 0.2);
+  color: var(--color-primary-dark);
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+}
+
+.flash-alert {
+  background: rgba(196, 69, 54, 0.1);
+  border: 1px solid rgba(196, 69, 54, 0.2);
+  color: var(--color-danger);
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+}

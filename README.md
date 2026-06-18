@@ -1,4 +1,4 @@
-# SMS for Agents
+# SimLink — by Snáz.cz
 
 Give any AI agent the ability to **send and receive SMS through your own Android
 phone**. You install one app on your phone, create an account, pick a SIM to
@@ -6,34 +6,40 @@ share, and the app hands you an **MCP URL + token** you paste into ChatGPT,
 Claude, or any MCP-capable agent. Authentication ties every agent to *your*
 account, so only you can use the SIM.
 
+**Messages are relayed in memory and never stored or logged** — nothing about
+message content touches the disk, and a short TTL drops anything in flight.
+
 ```
 ┌─────────────┐   MCP (Streamable HTTP + Bearer token)   ┌──────────────┐
 │ Agent /     │ ───── send_sms · list_messages ─────────▶│              │
-│ ChatGPT /   │ ────────── wait_for_sms (long-poll) ─────▶│ Rails server │
-│ Claude      │ ◀──── notifications/resources/updated ────│  (the hub)   │
-└─────────────┘                  (SSE, bonus)             │              │
+│ ChatGPT /   │ ────────── wait_for_sms (non-blocking) ──▶│ Rails server │
+│ Claude      │                                           │  (the hub)   │
+└─────────────┘                                           │              │
                                                           │  accounts    │
 ┌─────────────────────────┐  device API (Bearer token)   │  SIMs        │
-│ Android app             │  long-poll outbox ───────────▶│  MCP tokens  │
-│ Hotwire Native UI shell │  post inbound  ──────────────▶│  messages    │
-│ + Kotlin SMS bridge     │◀─ queued outbound SMS ────────│              │
-└─────────────────────────┘                              └──────────────┘
+│ Android app             │  pull outbox (FCM-woken) ────▶│  MCP tokens  │
+│ Hotwire Native UI shell │  post inbound  ──────────────▶│  (in-memory  │
+│ + Kotlin SMS bridge     │◀─ queued outbound SMS ────────│   relay)     │
+└─────────────────────────┘◀─ FCM wake (content-free) ────└──────────────┘
         SmsManager (send) · BroadcastReceiver (receive) · SubscriptionManager (SIMs)
 ```
 
 ## Does MCP support "push"?
 
-You asked specifically about this. **The protocol supports server→client
-notifications, but the big hosted agents (ChatGPT, Claude) don't autonomously act
-on them** — they run a request/response loop, so a push doesn't "wake the model."
-So this project gives you three ways to receive, in order of practicality:
+**The protocol supports server→client notifications, but the big hosted agents
+(ChatGPT, Claude) don't autonomously act on them** — they run a request/response
+loop, so a push doesn't "wake the model." So the agent receives by checking:
 
-1. **`wait_for_sms(timeout)`** — a tool that blocks server-side until a text
-   arrives (or times out). The agent calls it and effectively "waits." This is
-   the most compatible push-like behavior. ✅ built & tested
-2. **`list_messages(since:)`** — plain polling whenever the agent wants. ✅
-3. **`notifications/resources/updated`** over SSE — real push for the few clients
-   that honor it; emitted the instant an SMS lands. ✅ (bonus)
+1. **`wait_for_sms(since:)`** — non-blocking: it returns immediately with any new
+   inbound SMS, or `pending:true` plus a `checked_at` time to pass back on the
+   next call. An agent loops on it to "wait." ✅
+2. **`list_messages(since:)`** — recent in-flight messages (the relay only holds
+   the last few minutes; there's no stored history). ✅
+
+The **phone** side does get real push: the server sends a **content-free FCM
+wake** the moment an agent queues an outbound text, and the phone pulls it over
+HTTPS (a slow fallback poll covers a missed push). Everything is non-blocking —
+no request ever holds a server thread.
 
 True autonomy ("an agent reacting to texts 24/7") needs a long-running agent
 process you control — point it at the same MCP server and loop on `wait_for_sms`.
@@ -49,13 +55,16 @@ process you control — point it at the same MCP server and loop on `wait_for_sm
 
 ```
 app/
-  controllers/mcp_controller.rb       # MCP transport: POST JSON-RPC, GET SSE, auth
+  controllers/mcp_controller.rb       # MCP transport: POST JSON-RPC, auth
   services/mcp/handler.rb             # MCP tools: send_sms, list_messages, wait_for_sms
-  controllers/api/v1/                 # device API: outbox, sims, inbound, status, heartbeat
+  services/sms_relay.rb               # in-memory, no-storage message relay (TTL)
+  services/fcm.rb                     # content-free FCM wake pings
+  controllers/api/v1/                 # device API: outbox, sims, inbound, status, heartbeat, fcm_token
   controllers/{dashboards,sim_cards,mcp_tokens,messages,pairings}_controller.rb
-  models/{user,device,sim_card,mcp_token,message}.rb
+  models/{user,device,sim_card,mcp_token}.rb
 android/                              # the Android app (see android/README.md)
 test/integration/relay_flow_test.rb  # full agent↔server↔phone loop
+test/services/sms_relay_test.rb      # in-memory relay unit tests
 ```
 
 ## Run the server
@@ -123,6 +132,8 @@ Three separate credentials, each scoped:
 - MCP tokens are stored encrypted at rest (`ActiveRecord encrypts`) and matched by
   SHA-256 digest. Revoke any token from the UI.
 - An MCP token is bound to a single SIM; agents never see other SIMs or accounts.
+- **Message content is never persisted or logged** — it lives only in the
+  in-memory relay while in transit. SMS fields are filtered from request logs.
 - For production set real `AR_ENCRYPTION_*` keys (see
   `config/initializers/active_record_encryption.rb`) and serve over HTTPS.
 
@@ -140,9 +151,10 @@ phone confirms `sent`; phone reports an inbound SMS → agent reads it via
 
 Ship to the public without the Play Store: host the server on your own VPS with
 **Kamal**, then distribute the app via **GitHub Releases + Obtainium** and
-**F-Droid** (the app is fully FOSS — no Google services). Step-by-step in
-**[DISTRIBUTION.md](DISTRIBUTION.md)**; data & responsible-use disclosures in
-**[PRIVACY.md](PRIVACY.md)**.
+**F-Droid**. Push uses Firebase Cloud Messaging (Google Play Services) for the
+content-free wake; on Google-free devices the app falls back to a periodic poll.
+Step-by-step in **[DISTRIBUTION.md](DISTRIBUTION.md)**; data & responsible-use
+disclosures in **[PRIVACY.md](PRIVACY.md)**.
 
 Quick deploy:
 ```bash
@@ -153,7 +165,8 @@ bin/kamal deploy    # updates
 
 ## Status & next steps
 
-Built & verified: backend, MCP server (all 3 tools + SSE), device API, web UI,
-the full Android project, and the deploy + distribution pipeline (Kamal, signed
-release CI, F-Droid metadata). Natural follow-ups: FCM push (let the phone sleep
-instead of long-polling), delivery receipts, and per-token rate limits.
+Built & verified (server): in-memory relay (no storage, no logging), MCP server
+(all 3 tools, non-blocking), device API, web UI, FCM wake — full suite green.
+Android FCM wiring is written but unbuilt (needs an APK build/release). Natural
+follow-ups: delivery receipts, per-token rate limits, and a Redis-backed relay if
+you ever run more than one server process.

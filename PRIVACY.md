@@ -9,23 +9,28 @@ they connect their phone, and adapt it into your privacy policy / terms.
   messages that arrive while it's running and ones agents send.
 - **Phone/SIM info** — to list your SIM cards so you can choose which to share,
   and to send on the right SIM.
-- **Notifications** — to run the always-on relay as a foreground service.
+- **Notifications** — to run the relay as a foreground service.
+- **Push (Firebase Cloud Messaging)** — to wake the app when an agent queues an
+  outbound text. The push is **content-free** (just a "fetch now" signal); the
+  message body and numbers are pulled from the server over HTTPS and never travel
+  through Google.
 
-The app talks **only** to the server you connect it to. It contains no
-analytics, ads, trackers, or Google services.
+The app sends message content **only** to the server you connect it to, and has
+no analytics, ads, or trackers. It uses Google Play Services for the FCM wake
+signal; on a Google-free device it simply falls back to a periodic poll.
 
 ## What the server stores
-On the server you (or your provider) run:
+Message content is **not stored**. Texts are relayed **in memory only** while in
+transit (a few minutes, then dropped) and are never written to disk or to the
+logs. A server restart loses anything in flight. The database holds only:
 - Account email + password (hashed).
-- The **content and metadata** of messages sent/received through a shared SIM
-  (numbers, body, timestamps, status).
 - SIM details you report (label, number, carrier).
 - Agent (MCP) tokens — encrypted at rest; matched by hash.
+- Your phone's push (FCM) token, so the server can send wake signals.
 
-If you run the public instance, **you are the data controller** for your users'
-message data. Have a real privacy policy and a deletion path before inviting
-strangers. Privacy-conscious users can **self-host** the server (it's open
-source) so their messages never touch your instance.
+Because message content is never persisted, there's no message history to leak or
+to delete. If you run the public instance you remain the data controller for
+account data; self-hosters keep even that on their own box.
 
 ## Risks users must understand
 - **Carrier action (most important).** Sending automated/agent-driven SMS from a

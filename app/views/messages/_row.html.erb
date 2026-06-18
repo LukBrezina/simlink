@@ -2,11 +2,11 @@
   inbound = message[:direction] == "inbound"
   status_color = {
     "queued" => "text-amber-600", "sending" => "text-amber-600",
-    "sent" => "text-green-600", "failed" => "text-red-600", "received" => "text-blue-600"
+    "sent" => "text-green-600", "failed" => "text-red-600", "received" => "text-primary"
   }[message[:status]] || "text-gray-500"
 %>
 <div class="p-3 flex items-start gap-3">
-  <span class="flex-none mt-1 text-xs font-medium <%= inbound ? 'text-blue-600' : 'text-gray-400' %>">
+  <span class="flex-none mt-1 text-xs font-medium <%= inbound ? 'text-primary' : 'text-gray-400' %>">
     <%= inbound ? "▼ IN" : "▲ OUT" %>
   </span>
   <div class="flex-1 min-w-0">

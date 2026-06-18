@@ -13,25 +13,25 @@
     <div>
       <%= form.label :email_address, "Email", class: "block text-sm font-medium mb-1" %>
       <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username",
-            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-blue-600" %>
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-primary" %>
     </div>
     <div>
       <%= form.label :password, "Password", class: "block text-sm font-medium mb-1" %>
       <%= form.password_field :password, required: true, autocomplete: "new-password", minlength: 8,
-            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-blue-600" %>
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-primary" %>
       <p class="text-xs text-gray-400 mt-1">At least 8 characters.</p>
     </div>
     <div>
       <%= form.label :password_confirmation, "Confirm password", class: "block text-sm font-medium mb-1" %>
       <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password",
-            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-blue-600" %>
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-primary" %>
     </div>
 
     <%= form.submit "Create account",
-          class: "w-full rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2.5 cursor-pointer" %>
+          class: "w-full rounded-lg bg-primary hover:bg-primary-light text-white font-medium px-4 py-2.5 cursor-pointer" %>
   <% end %>
 
   <p class="text-sm text-gray-500 mt-6 text-center">
-    Already have an account? <%= link_to "Sign in", new_session_path, class: "text-blue-700 underline" %>
+    Already have an account? <%= link_to "Sign in", new_session_path, class: "text-primary underline" %>
   </p>
 </div>

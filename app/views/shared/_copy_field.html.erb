@@ -4,7 +4,7 @@
   <div class="flex items-center justify-between mb-1">
     <span class="text-xs font-medium text-gray-500 uppercase tracking-wide"><%= label %></span>
     <button type="button" data-action="clipboard#copy"
-            class="text-xs font-medium text-blue-700 hover:text-blue-900 cursor-pointer">Copy</button>
+            class="text-xs font-medium text-primary hover:text-primary-dark cursor-pointer">Copy</button>
   </div>
   <% if multiline %>
     <textarea data-clipboard-target="source" readonly rows="<%= value.to_s.lines.count.clamp(3, 16) %>"

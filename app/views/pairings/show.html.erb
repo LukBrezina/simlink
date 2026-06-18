@@ -6,17 +6,17 @@
   <!-- Browser visitor: pairing only works inside the app -->
   <p class="text-gray-500 text-sm mb-6">Pairing happens inside the SimLink app on the phone you want to text from.</p>
 
-  <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6">
+  <div class="rounded-xl border border-primary/20 bg-primary/5 p-4 mb-6">
     <p class="font-medium mb-1">Continue on your Android phone</p>
     <ol class="text-sm text-gray-600 list-decimal list-inside space-y-1">
-      <li><%= link_to "Get the SimLink app", get_app_path, class: "text-blue-700 underline" %> and install it.</li>
+      <li><%= link_to "Get the SimLink app", get_app_path, class: "text-primary underline" %> and install it.</li>
       <li>Open the app and sign in with this account.</li>
       <li>Come back to this screen <em>in the app</em> and tap “Connect phone”.</li>
     </ol>
   </div>
 
   <%= link_to "Get the app", get_app_path,
-        class: "block text-center rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2.5" %>
+        class: "block text-center rounded-lg bg-primary hover:bg-primary-light text-white font-medium px-4 py-2.5" %>
 <% else %>
   <!-- Inside the app: do the real pairing -->
   <p class="text-gray-500 text-sm mb-6">This lets SimLink send & receive SMS in the background for your agents.</p>
@@ -43,15 +43,15 @@
     </div>
     <%= button_to (@device ? "Reconnect" : "Connect phone"),
           pairing_path, method: :post,
-          class: "w-full rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2.5 cursor-pointer" %>
+          class: "w-full rounded-lg bg-primary hover:bg-primary-light text-white font-medium px-4 py-2.5 cursor-pointer" %>
   </div>
 
   <div class="rounded-xl bg-gray-100 p-4 text-sm text-gray-600">
     <p class="font-semibold mb-1">After connecting</p>
     <ol class="list-decimal list-inside space-y-1">
       <li>Grant SMS &amp; phone permissions when asked.</li>
-      <li><%= link_to "Share a SIM", sim_cards_path, class: "text-blue-700 underline" %>.</li>
-      <li><%= link_to "Connect an agent", setup_path, class: "text-blue-700 underline" %>.</li>
+      <li><%= link_to "Share a SIM", sim_cards_path, class: "text-primary underline" %>.</li>
+      <li><%= link_to "Connect an agent", setup_path, class: "text-primary underline" %>.</li>
     </ol>
   </div>
 <% end %>
