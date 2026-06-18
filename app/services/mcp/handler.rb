@@ -245,6 +245,7 @@ module Mcp
           id: entry.id, direction: "outbound",
           from: sim_card.phone_number, to: entry.to,
           body: entry.body, status: entry.status,
+          error: entry.error,
           timestamp: (entry.updated_at || entry.created_at).iso8601
         }
       end.compact
