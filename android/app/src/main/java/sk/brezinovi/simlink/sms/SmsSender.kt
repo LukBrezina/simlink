@@ -46,7 +46,7 @@ class SmsSender(private val context: Context) {
                     val code = lastCode
                     // Network must not run on the main thread.
                     Thread {
-                        if (didFail) api.reportStatus(msgId, "failed", error = "Send failed (result $code)")
+                        if (didFail) api.reportStatus(msgId, "failed", error = sendError(code))
                         else api.reportStatus(msgId, "sent")
                     }.start()
                 }
@@ -78,6 +78,28 @@ class SmsSender(private val context: Context) {
             runCatching { context.unregisterReceiver(receiver) }
             Thread { api.reportStatus(message.id, "failed", error = e.message ?: "send threw") }.start()
         }
+    }
+
+    // Human-readable reason for an SmsManager send-result code, so the agent
+    // sees *why* a send failed (surfaced via list_messages `error`), not "result N".
+    private fun sendError(code: Int): String {
+        val reason = when (code) {
+            1 -> "generic failure — often an inactive SIM, no credit, or carrier rejection"
+            2 -> "radio off (airplane mode?)"
+            3 -> "null PDU"
+            4 -> "no service / no signal"
+            5 -> "send limit exceeded"
+            6 -> "blocked by fixed dialing numbers (FDN)"
+            7 -> "short code not allowed"
+            8 -> "short code never allowed"
+            9 -> "radio not available"
+            10 -> "network rejected the message"
+            11 -> "invalid SMS arguments (check the recipient number)"
+            13 -> "no memory"
+            14 -> "request not supported"
+            else -> "send failed"
+        }
+        return "$reason (result $code)"
     }
 
     @Suppress("DEPRECATION")
