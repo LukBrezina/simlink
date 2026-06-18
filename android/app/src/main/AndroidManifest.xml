@@ -65,7 +65,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- Long-polls the outbox and sends queued SMS -->
+        <!-- Pulls queued outbound SMS (FCM-woken + slow fallback poll) and sends them -->
         <service
             android:name=".service.OutboxService"
             android:exported="false"
@@ -73,6 +73,15 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Relays SMS between the owner's phone and their authenticated AI agents." />
+        </service>
+
+        <!-- Receives content-free FCM wake pings and triggers an outbox pull -->
+        <service
+            android:name=".service.SimMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
         </service>
     </application>
 </manifest>

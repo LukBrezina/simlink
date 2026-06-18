@@ -21,9 +21,10 @@ class ApiClient(context: Context) {
     private val base = BuildConfig.BASE_URL.trimEnd('/')
 
     private val client = OkHttpClient.Builder()
-        // Outbox long-poll holds up to ~25s; allow generous read timeout.
-        .callTimeout(75, TimeUnit.SECONDS)
-        .readTimeout(75, TimeUnit.SECONDS)
+        // Endpoints are non-blocking now (FCM wakes + a slow fallback poll), so
+        // ordinary timeouts are plenty.
+        .callTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
         .connectTimeout(15, TimeUnit.SECONDS)
         .build()
 
@@ -31,9 +32,9 @@ class ApiClient(context: Context) {
 
     private fun token(): String? = TokenStore.deviceToken(appContext)
 
-    /** Long-poll for queued outbound SMS. Returns empty on timeout or error. */
-    fun pollOutbox(timeoutSeconds: Int = 25): List<OutboundMessage> {
-        val request = authed(Request.Builder().url("$base/api/v1/outbox?timeout_seconds=$timeoutSeconds").get())
+    /** Pull queued outbound SMS (returns immediately). Empty on none or error. */
+    fun pollOutbox(): List<OutboundMessage> {
+        val request = authed(Request.Builder().url("$base/api/v1/outbox").get())
         client.newCall(request).execute().use { resp ->
             if (!resp.isSuccessful) return emptyList()
             val arr = JSONObject(resp.body?.string().orEmpty().ifBlank { "{}" })
@@ -82,6 +83,10 @@ class ApiClient(context: Context) {
     }
 
     fun heartbeat() = post("$base/api/v1/heartbeat", JSONObject())
+
+    /** Register/refresh the phone's FCM token so the server can send wake pings. */
+    fun registerFcmToken(fcmToken: String) =
+        post("$base/api/v1/fcm_token", JSONObject().put("fcm_token", fcmToken))
 
     private fun post(url: String, body: JSONObject) {
         val request = authed(

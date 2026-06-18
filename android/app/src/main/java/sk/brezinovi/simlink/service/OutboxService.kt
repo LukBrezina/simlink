@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.google.firebase.messaging.FirebaseMessaging
 import sk.brezinovi.simlink.MainActivity
 import sk.brezinovi.simlink.R
 import sk.brezinovi.simlink.data.TokenStore
@@ -27,11 +28,10 @@ import kotlinx.coroutines.launch
 import android.app.PendingIntent
 
 /**
- * Foreground service that keeps a long-poll open against /api/v1/outbox and
- * sends any queued SMS the server hands back. This is the "always on" relay.
- *
- * Note: a foreground service is the Firebase-free way to stay responsive. For a
- * production app you'd likely add FCM push so the phone can sleep; see README.
+ * Foreground service that sends queued outbound SMS. Delivery is push-driven:
+ * the server sends a content-free FCM "wake" ping (handled by SimMessagingService)
+ * which triggers an immediate, non-blocking outbox pull. A slow fallback poll
+ * catches anything a dropped/delayed push missed. No long-lived connections.
  */
 class OutboxService : Service() {
 
@@ -51,6 +51,10 @@ class OutboxService : Service() {
             return START_NOT_STICKY
         }
         startLoop()
+        // An FCM wake (or any caller) can request an immediate pull.
+        if (intent?.action == ACTION_PULL_NOW) {
+            scope.launch { pullAndSend() }
+        }
         return START_STICKY
     }
 
@@ -60,15 +64,26 @@ class OutboxService : Service() {
         scope.launch {
             runCatching { SimReporter.report(this@OutboxService) }
             runCatching { api.heartbeat() }
+            registerFcmToken()
+            // Slow fallback poll — push is the primary delivery path.
             while (isActive) {
-                try {
-                    val messages = api.pollOutbox(timeoutSeconds = 25)
-                    messages.forEach { sender.send(it) }
-                    if (messages.isEmpty()) delay(1_000)
-                } catch (_: Exception) {
-                    delay(5_000) // network backoff
-                }
+                pullAndSend()
+                delay(FALLBACK_INTERVAL_MS)
             }
+        }
+    }
+
+    private fun pullAndSend() {
+        try {
+            api.pollOutbox().forEach { sender.send(it) }
+        } catch (_: Exception) {
+            // Best-effort; the next FCM wake or fallback tick retries.
+        }
+    }
+
+    private fun registerFcmToken() {
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            scope.launch { runCatching { api.registerFcmToken(token) } }
         }
     }
 
@@ -122,11 +137,22 @@ class OutboxService : Service() {
     companion object {
         const val NOTIF_ID = 1
         const val CHANNEL_ID = "sms_relay"
+        const val ACTION_PULL_NOW = "sk.brezinovi.simlink.PULL_NOW"
+        private const val FALLBACK_INTERVAL_MS = 90_000L
 
         fun start(context: Context) {
             if (!TokenStore.hasToken(context)) return
             ContextCompat.startForegroundService(
                 context, Intent(context, OutboxService::class.java)
+            )
+        }
+
+        // Called from the FCM wake to pull queued outbound SMS immediately.
+        fun pullNow(context: Context) {
+            if (!TokenStore.hasToken(context)) return
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, OutboxService::class.java).setAction(ACTION_PULL_NOW)
             )
         }
     }

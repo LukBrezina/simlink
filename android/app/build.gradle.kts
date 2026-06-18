@@ -6,6 +6,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("com.google.gms.google-services")
 }
 
 // Optional signing config. Present for local release builds and CI (which writes
@@ -20,7 +21,9 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "sk.brezinovi.simlink"
+        // App identity (matches google-services.json package_name for FCM).
+        // The code namespace stays sk.brezinovi.simlink to avoid moving every file.
+        applicationId = "cz.snaz.simlink"
         minSdk = 28
         targetSdk = 35
         versionCode = (System.getenv("VERSION_CODE")?.toIntOrNull()) ?: 1
@@ -52,7 +55,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Your public server.
-            buildConfigField("String", "BASE_URL", "\"https://simlink.brezinovi.sk\"")
+            buildConfigField("String", "BASE_URL", "\"https://simlink.snaz.cz\"")
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -98,4 +101,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("com.squareup.okhttp3:okhttp:5.3.2")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // FCM push (content-free wakes). BoM keeps the Firebase libs version-aligned.
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-messaging")
 }
