@@ -13,6 +13,12 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to dashboard_path
   end
 
+  test "the native app is sent to the dashboard, not the marketing page" do
+    # Regression: native app must not bounce to /session/new after sign-in.
+    get root_path, headers: { "User-Agent" => "SimLink; Hotwire Native Android; Mozilla/5.0" }
+    assert_redirected_to dashboard_path
+  end
+
   test "per-agent guide renders with the agent name" do
     get agent_guide_path("claude")
     assert_response :success

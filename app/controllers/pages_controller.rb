@@ -17,12 +17,13 @@ class PagesController < ApplicationController
                        blurb: "Register SimLink as an MCP tool server." }
   }.freeze
 
-  # Public landing page. Signed-in users go straight to their dashboard; the
-  # native app skips the marketing and goes to sign-in.
+  # Public landing page for anonymous browsers only. Signed-in users AND the
+  # native app go to the dashboard — the dashboard enforces auth through the
+  # normal flow (which sets return-to), so a post-login redirect lands back on
+  # the dashboard instead of bouncing through here to /session/new.
   def home
     @agents = AGENTS
-    return redirect_to(dashboard_path) if authenticated?
-    redirect_to(new_session_path) if hotwire_native_app?
+    redirect_to dashboard_path if authenticated? || hotwire_native_app?
   end
 
   # Per-agent connect guide, e.g. /for/claude.
