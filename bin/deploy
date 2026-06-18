@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Deploy SimLink. Sources .env (Tailscale SIMLINK_SSH_HOST + secrets) which Kamal
+# does not auto-load for deploy.yml, then runs kamal. Commit first — Kamal builds
+# from git HEAD.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+set -a; [ -f .env ] && . ./.env; set +a
+exec bin/kamal deploy "$@"

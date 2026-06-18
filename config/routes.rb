@@ -4,6 +4,9 @@ Rails.application.routes.draw do
   resource :registration, only: %i[new create]
   resources :passwords, param: :token
 
+  # --- Public "get the app" page ---
+  get "get", to: "downloads#show", as: :get_app
+
   # --- Web UI (rendered in the Hotwire Native app) ---
   resource :dashboard, only: :show
   resources :sim_cards, only: %i[index] do
