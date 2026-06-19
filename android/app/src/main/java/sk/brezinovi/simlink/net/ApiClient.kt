@@ -58,13 +58,43 @@ class ApiClient(context: Context) {
         post("$base/api/v1/messages/$id/status", body)
     }
 
-    fun reportInbound(subscriptionId: Int, from: String, text: String, receivedAtIso: String?) {
-        val body = JSONObject()
-            .put("subscription_id", subscriptionId)
-            .put("from", from)
-            .put("body", text)
-        receivedAtIso?.let { body.put("received_at", it) }
-        post("$base/api/v1/inbound", body)
+    /** Claim pending read-requests for this device's shared SIMs (returns immediately). */
+    fun pollReadRequests(): List<ReadRequest> {
+        val request = authed(Request.Builder().url("$base/api/v1/read_requests").get())
+        client.newCall(request).execute().use { resp ->
+            if (!resp.isSuccessful) return emptyList()
+            val arr = JSONObject(resp.body?.string().orEmpty().ifBlank { "{}" })
+                .optJSONArray("requests") ?: return emptyList()
+            return (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                ReadRequest(
+                    id = o.getLong("id"),
+                    subscriptionId = o.getInt("subscription_id"),
+                    limit = o.optInt("limit", 20),
+                    since = o.optString("since").ifBlank { null },
+                    address = o.optString("address").ifBlank { null },
+                    box = o.optString("box").ifBlank { "all" }
+                )
+            }
+        }
+    }
+
+    /** Upload the messages read for a read-request (or an `error` if the read failed). */
+    fun reportReadResults(id: Long, records: List<SmsRecord>, error: String? = null) {
+        val arr = JSONArray()
+        records.forEach { r ->
+            arr.put(
+                JSONObject()
+                    .put("from", r.from ?: JSONObject.NULL)
+                    .put("to", r.to ?: JSONObject.NULL)
+                    .put("body", r.body)
+                    .put("date", r.date)
+                    .put("type", r.type)
+            )
+        }
+        val body = JSONObject().put("messages", arr)
+        error?.let { body.put("error", it) }
+        post("$base/api/v1/read_requests/$id/results", body)
     }
 
     fun reportSims(sims: List<SimInfo>) {

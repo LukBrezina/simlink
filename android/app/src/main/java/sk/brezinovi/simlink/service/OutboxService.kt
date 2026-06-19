@@ -17,6 +17,7 @@ import sk.brezinovi.simlink.R
 import sk.brezinovi.simlink.data.TokenStore
 import sk.brezinovi.simlink.net.ApiClient
 import sk.brezinovi.simlink.sms.SimReporter
+import sk.brezinovi.simlink.sms.SmsReader
 import sk.brezinovi.simlink.sms.SmsSender
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -78,6 +79,30 @@ class OutboxService : Service() {
             api.pollOutbox().forEach { sender.send(it) }
         } catch (_: Exception) {
             // Best-effort; the next FCM wake or fallback tick retries.
+        }
+        pullAndAnswerReads()
+    }
+
+    // Answer any pending read-requests by reading the device's SMS provider and
+    // uploading the rows. A failed read (e.g. READ_SMS not granted) is reported
+    // back so the agent gets a clear error instead of polling forever.
+    private fun pullAndAnswerReads() {
+        val requests = try {
+            api.pollReadRequests()
+        } catch (_: Exception) {
+            return
+        }
+        requests.forEach { req ->
+            try {
+                api.reportReadResults(req.id, SmsReader.read(this, req))
+            } catch (_: SecurityException) {
+                api.reportReadResults(
+                    req.id, emptyList(),
+                    error = "READ_SMS permission not granted on the phone. Open SimLink and allow SMS access."
+                )
+            } catch (e: Exception) {
+                api.reportReadResults(req.id, emptyList(), error = e.message ?: "read failed")
+            }
         }
     }
 

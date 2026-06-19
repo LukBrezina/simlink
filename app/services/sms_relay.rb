@@ -1,155 +1,138 @@
-# Process-wide, in-memory SMS relay.
+# SQLite-backed SMS relay.
 #
-# SMS content (message text and phone numbers) lives here ONLY while a message is
-# in transit between an agent and the phone. Nothing is ever written to disk or to
-# the logs, and entries are pruned after a short TTL. This is the deliberate
-# "don't store" design: a server restart, or a phone offline past the TTL, drops
-# in-flight messages (send-and-forget). There is no durable queue.
+# SMS content (message text and phone numbers) is held here ONLY while a message
+# is in transit between an agent and the phone. It is encrypted at rest (see
+# RelayOutbound / RelayRead), filtered from the logs, and pruned after a short
+# TTL — a deliberate "transient, not a history" design. Nothing keeps a record
+# once it has been delivered and aged out.
 #
-# Single Puma process (no clustered workers) => one shared instance across all
-# request threads, guarded by a mutex. If this ever runs multiple processes or
-# servers, swap the backing store for Redis (same interface).
+# Why SQLite instead of process memory: the relay is shared across all Puma
+# workers on the host, so claims are coordinated through the database. Every
+# operation is a handful of fast local queries — nothing blocks waiting on the
+# phone; the phone reaches the server through its own (non-blocking) requests and
+# the agent re-polls.
 #
-# In development, code reloading resets this between requests — consistent with
-# the transient semantics. In production (eager load, no reload) it persists for
-# the lifetime of the process.
+# Claims are race-free across workers without explicit locks: a claim flips rows
+# with a single `UPDATE ... WHERE status = 'queued'` (atomic under SQLite's
+# serialized writes) stamped with a unique token, then re-selects by that token.
+# Two concurrent claimers can't grab the same row — the second UPDATE no longer
+# matches it.
 class SmsRelay
-  include Singleton
-
   TTL_SECONDS = 5 * 60
-  # Safety cap so a phone that never drains can't grow memory without bound.
+  # Safety cap so a phone that never drains can't grow the table without bound.
   MAX_ENTRIES_PER_SIM = 200
 
-  Inbound  = Struct.new(:id, :sim_card_id, :from, :body, :received_at, keyword_init: true)
-  Outbound = Struct.new(:id, :sim_card_id, :subscription_id, :to, :body, :status, :error,
-                        :created_at, :updated_at, keyword_init: true)
-
   class << self
-    delegate :enqueue_outbound, :claim_outbound, :update_status,
-             :add_inbound, :inbound_since, :recent, :reset!, to: :instance
-  end
+    # ---- outbound: agent -> server -> phone ----------------------------------
 
-  def initialize
-    @mutex = Mutex.new
-    @inbound = []
-    @outbound = []
-    @seq = 0
-  end
-
-  # ---- inbound: phone -> server -> agent -------------------------------------
-
-  def add_inbound(sim_card_id:, from:, body:, received_at: nil)
-    @mutex.synchronize do
+    def enqueue_outbound(sim_card_id:, subscription_id:, to:, body:)
       prune!
-      entry = Inbound.new(id: next_id, sim_card_id: sim_card_id, from: from, body: body,
-                          received_at: received_at || Time.current)
-      @inbound << entry
-      cap!(@inbound, sim_card_id)
-      entry
+      rec = RelayOutbound.create!(
+        sim_card_id: sim_card_id, subscription_id: subscription_id,
+        to: to, body: body, status: "queued"
+      )
+      cap!(RelayOutbound, sim_card_id)
+      rec
     end
-  end
 
-  # Inbound messages for a SIM that arrived after `since` (nil => all buffered),
-  # oldest first.
-  def inbound_since(sim_card_id, since = nil)
-    @mutex.synchronize do
+    # Atomically claim every queued outbound message for the given SIMs
+    # (queued -> sending) and return them, oldest first.
+    def claim_outbound(sim_card_ids)
+      claim(RelayOutbound, sim_card_ids, from: "queued", to: "sending")
+    end
+
+    # Update an outbound entry's status. When `sim_card_ids` is given, the update
+    # only applies if the entry belongs to one of those SIMs.
+    def update_status(id, status:, error: nil, sim_card_ids: nil)
+      scope = RelayOutbound.where(id: id)
+      scope = scope.where(sim_card_id: Array(sim_card_ids)) if sim_card_ids
+      rec = scope.first
+      return nil unless rec
+      rec.update!(status: status, error: error)
+      rec
+    end
+
+    # ---- reads: agent -> server -> phone (read its SMS store) -> server -> agent
+
+    def enqueue_read(sim_card_id:, subscription_id:, limit:, since: nil, address: nil, box: "all")
       prune!
-      @inbound.select { |e| e.sim_card_id == sim_card_id && (since.nil? || e.received_at > since) }
-              .sort_by(&:received_at)
+      rec = RelayRead.create!(
+        sim_card_id: sim_card_id, subscription_id: subscription_id,
+        read_limit: limit, since: since, address: address, box: box, status: "pending"
+      )
+      cap!(RelayRead, sim_card_id)
+      rec
     end
-  end
 
-  # ---- outbound: agent -> server -> phone ------------------------------------
+    # Atomically claim pending read-requests for the given SIMs (pending -> claimed).
+    def claim_reads(sim_card_ids)
+      claim(RelayRead, sim_card_ids, from: "pending", to: "claimed")
+    end
 
-  def enqueue_outbound(sim_card_id:, subscription_id:, to:, body:)
-    @mutex.synchronize do
+    # Record the rows the phone read (or an error). Scoped to the device's SIMs.
+    def fulfill_read(id, messages:, error: nil, sim_card_ids: nil)
+      scope = RelayRead.where(id: id)
+      scope = scope.where(sim_card_id: Array(sim_card_ids)) if sim_card_ids
+      rec = scope.first
+      return nil unless rec
+      rec.update!(messages_json: JSON.generate(Array(messages)), error: error, status: "fulfilled")
+      rec
+    end
+
+    # Look up a read-request for the agent that owns the SIM (nil if expired/foreign).
+    def read_result(id, sim_card_id)
+      RelayRead.where(id: id, sim_card_id: sim_card_id).where(fresh).first
+    end
+
+    # ---- shared --------------------------------------------------------------
+
+    # Recent outbound messages for the given SIMs, newest first. This is all
+    # `list_messages` / the web dashboard can show — there is no long-term history.
+    def recent(sim_card_ids, since: nil, limit: 20)
+      ids = Array(sim_card_ids)
+      return [] if ids.empty?
+      scope = RelayOutbound.where(sim_card_id: ids).where(fresh)
+      scope = scope.where("updated_at > ?", since) if since
+      scope.order(updated_at: :desc).limit(limit).to_a
+    end
+
+    def reset!
+      RelayOutbound.delete_all
+      RelayRead.delete_all
+    end
+
+    private
+
+    def claim(model, sim_card_ids, from:, to:)
+      ids = Array(sim_card_ids)
+      return [] if ids.empty?
       prune!
-      now = Time.current
-      entry = Outbound.new(id: next_id, sim_card_id: sim_card_id, subscription_id: subscription_id,
-                           to: to, body: body, status: "queued", error: nil,
-                           created_at: now, updated_at: now)
-      @outbound << entry
-      cap!(@outbound, sim_card_id)
-      entry
+      token = SecureRandom.hex(16)
+      model.where(sim_card_id: ids, status: from).where(fresh)
+           .update_all(status: to, claim_token: token, updated_at: Time.current)
+      model.where(claim_token: token).order(:created_at).to_a
     end
-  end
 
-  # Atomically claim every queued outbound message for the given SIMs
-  # (queued -> sending) and return them. The phone calls this; claiming marks
-  # them so a concurrent poll can't grab the same message twice.
-  def claim_outbound(sim_card_ids)
-    ids = Array(sim_card_ids)
-    @mutex.synchronize do
-      prune!
-      now = Time.current
-      claimed = @outbound.select { |e| ids.include?(e.sim_card_id) && e.status == "queued" }
-      claimed.each { |e| e.status = "sending"; e.updated_at = now }
-      claimed.sort_by(&:created_at)
+    def cutoff
+      Time.current - TTL_SECONDS
     end
-  end
 
-  # Update an outbound entry's status. When `sim_card_ids` is given, the update
-  # only applies if the entry belongs to one of those SIMs (so a device can't
-  # touch another device's messages).
-  def update_status(id, status:, error: nil, sim_card_ids: nil)
-    @mutex.synchronize do
-      prune!
-      entry = @outbound.find { |e| e.id == id }
-      return nil unless entry
-      return nil if sim_card_ids && !Array(sim_card_ids).include?(entry.sim_card_id)
-      entry.status = status
-      entry.error = error
-      entry.updated_at = Time.current
-      entry
+    # Filter expired-but-not-yet-deleted rows out of reads (cheap; no write).
+    def fresh
+      [ "updated_at > ?", cutoff ]
     end
-  end
 
-  # ---- shared ----------------------------------------------------------------
-
-  # Recent in-flight messages (both directions) for the given SIMs, newest first.
-  # This is all `list_messages` / the web dashboard can show — there is no history.
-  def recent(sim_card_ids, direction: "all", since: nil, limit: 20)
-    ids = Array(sim_card_ids)
-    @mutex.synchronize do
-      prune!
-      items = []
-      items.concat(@inbound.select  { |e| ids.include?(e.sim_card_id) }) unless direction == "outbound"
-      items.concat(@outbound.select { |e| ids.include?(e.sim_card_id) }) unless direction == "inbound"
-      items.select! { |e| since.nil? || timestamp(e) > since }
-      items.sort_by { |e| timestamp(e) }.reverse.first(limit)
+    # Delete aged-out rows. Called on writes (enqueue/claim), not on every poll.
+    def prune!
+      RelayOutbound.where("updated_at < ?", cutoff).delete_all
+      RelayRead.where("updated_at < ?", cutoff).delete_all
     end
-  end
 
-  def reset!
-    @mutex.synchronize do
-      @inbound = []
-      @outbound = []
-      @seq = 0
+    def cap!(model, sim_card_id)
+      excess = model.where(sim_card_id: sim_card_id).count - MAX_ENTRIES_PER_SIM
+      return if excess <= 0
+      old_ids = model.where(sim_card_id: sim_card_id).order(updated_at: :asc).limit(excess).pluck(:id)
+      model.where(id: old_ids).delete_all
     end
-  end
-
-  private
-
-  def next_id
-    @seq += 1
-  end
-
-  def timestamp(entry)
-    entry.is_a?(Inbound) ? entry.received_at : (entry.updated_at || entry.created_at)
-  end
-
-  def prune!
-    cutoff = Time.current - TTL_SECONDS
-    @inbound.reject!  { |e| e.received_at < cutoff }
-    @outbound.reject! { |e| e.updated_at < cutoff }
-  end
-
-  def cap!(collection, sim_card_id)
-    for_sim = collection.select { |e| e.sim_card_id == sim_card_id }
-    excess = for_sim.size - MAX_ENTRIES_PER_SIM
-    return if excess <= 0
-
-    drop = for_sim.sort_by { |e| timestamp(e) }.first(excess)
-    collection.reject! { |e| drop.include?(e) }
   end
 end

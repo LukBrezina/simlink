@@ -53,7 +53,7 @@
     ["📟", "A real number", "Texts come from your actual SIM, not a shortcode."],
     ["♻️", "Reuse an old phone", "Any spare Android becomes the relay."],
     ["🪙", "Costs pennies", "Prepaid SIM, your normal SMS rates."],
-    ["🔒", "Private", "Relayed in memory — never stored or logged."]
+    ["🔒", "Private", "Encrypted in transit, never logged, pruned within minutes."]
   ].each do |emoji, title, body| %>
     <div class="rounded-xl border border-gray-200 bg-white p-3">
       <div class="text-2xl mb-1"><%= emoji %></div>
@@ -70,7 +70,7 @@
     <% [
       ["Install &amp; share a SIM", "Install the app on the old phone, sign in, pick the SIM your agent may use."],
       ["Connect your agent", "Paste the MCP URL + token into Claude, ChatGPT, Cursor — any MCP client."],
-      ["Text away", "Your agent calls <code>send_sms</code> / <code>wait_for_sms</code> — texts go through your number."]
+      ["Text away", "Your agent calls <code>send_sms</code> / <code>fetch_sms</code> — texts go through your number."]
     ].each_with_index do |(title, body), i| %>
       <li class="rounded-xl border border-gray-200 bg-white p-4">
         <div class="w-7 h-7 rounded-full bg-primary text-white text-sm font-bold flex items-center justify-center mb-2"><%= i + 1 %></div>
@@ -94,5 +94,5 @@
 
 <!-- Trust -->
 <p class="text-center text-sm text-gray-500 rounded-xl bg-primary/5 border border-primary/20 px-4 py-3">
-  🔒 Messages are relayed <strong>in memory</strong> — never stored, never logged. Your SIM, your number, your control.
+  🔒 Message content is <strong>encrypted in transit</strong> — never logged, pruned within minutes. Your SIM, your number, your control.
 </p>

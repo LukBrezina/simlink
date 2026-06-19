@@ -33,41 +33,61 @@ class SmsRelayTest < ActiveSupport::TestCase
     assert_nil SmsRelay.update_status(-999, status: "sent")
   end
 
-  test "inbound_since returns only messages after the cutoff, oldest first" do
-    t0 = Time.current
-    SmsRelay.add_inbound(sim_card_id: 1, from: "+420999", body: "old", received_at: t0 - 10)
-    SmsRelay.add_inbound(sim_card_id: 1, from: "+420999", body: "new", received_at: t0 + 10)
+  test "recent returns outbound messages newest first" do
+    SmsRelay.enqueue_outbound(sim_card_id: 1, subscription_id: 7, to: "+420111", body: "first")
+    SmsRelay.enqueue_outbound(sim_card_id: 1, subscription_id: 7, to: "+420222", body: "second")
 
-    fresh = SmsRelay.inbound_since(1, t0)
-    assert_equal [ "new" ], fresh.map(&:body)
-
-    assert_equal [ "old", "new" ], SmsRelay.inbound_since(1).map(&:body)
+    assert_equal [ "second", "first" ], SmsRelay.recent([ 1 ]).map(&:body)
   end
 
-  test "inbound is isolated per SIM" do
-    SmsRelay.add_inbound(sim_card_id: 1, from: "+420999", body: "for-1")
-    SmsRelay.add_inbound(sim_card_id: 2, from: "+420888", body: "for-2")
+  # ---- reads -----------------------------------------------------------------
 
-    assert_equal [ "for-1" ], SmsRelay.inbound_since(1).map(&:body)
+  test "enqueue_read then claim moves pending -> claimed and won't double-claim" do
+    req = SmsRelay.enqueue_read(sim_card_id: 1, subscription_id: 7, limit: 10, box: "inbox")
+    assert_equal "pending", req.status
+
+    claimed = SmsRelay.claim_reads([ 1 ])
+    assert_equal [ req.id ], claimed.map(&:id)
+    assert_equal "claimed", claimed.first.status
+    assert_equal "inbox", claimed.first.box
+
+    assert_empty SmsRelay.claim_reads([ 1 ])
   end
 
-  test "recent returns both directions newest first and respects direction filter" do
-    SmsRelay.enqueue_outbound(sim_card_id: 1, subscription_id: 7, to: "+420111", body: "out")
-    SmsRelay.add_inbound(sim_card_id: 1, from: "+420999", body: "in")
+  test "claim_reads is scoped to the requested SIMs" do
+    SmsRelay.enqueue_read(sim_card_id: 1, subscription_id: 7, limit: 5)
+    SmsRelay.enqueue_read(sim_card_id: 2, subscription_id: 8, limit: 5)
 
-    all = SmsRelay.recent([ 1 ])
-    assert_equal 2, all.size
-    assert_equal [ "in" ], SmsRelay.recent([ 1 ], direction: "inbound").map(&:body)
-    assert_equal [ "out" ], SmsRelay.recent([ 1 ], direction: "outbound").map(&:body)
+    assert_equal 1, SmsRelay.claim_reads([ 1 ]).size
+  end
+
+  test "fulfill_read stores the uploaded rows and read_result returns them" do
+    req = SmsRelay.enqueue_read(sim_card_id: 1, subscription_id: 7, limit: 5, box: "inbox")
+    SmsRelay.claim_reads([ 1 ])
+
+    rows = [ { "from" => "+420999", "body" => "code 123", "date" => Time.current.iso8601, "type" => "inbox" } ]
+    SmsRelay.fulfill_read(req.id, messages: rows, sim_card_ids: [ 1 ])
+
+    result = SmsRelay.read_result(req.id, 1)
+    assert_equal "fulfilled", result.status
+    assert_equal "code 123", result.messages.first["body"]
+
+    # read_result is scoped to the SIM that owns the request.
+    assert_nil SmsRelay.read_result(req.id, 2)
+  end
+
+  test "fulfill_read won't touch another device's request" do
+    req = SmsRelay.enqueue_read(sim_card_id: 1, subscription_id: 7, limit: 5)
+    assert_nil SmsRelay.fulfill_read(req.id, messages: [], sim_card_ids: [ 99 ])
   end
 
   test "entries are pruned after the TTL" do
-    SmsRelay.add_inbound(sim_card_id: 1, from: "+420999", body: "ephemeral")
     SmsRelay.enqueue_outbound(sim_card_id: 1, subscription_id: 7, to: "+420111", body: "ephemeral")
+    req = SmsRelay.enqueue_read(sim_card_id: 1, subscription_id: 7, limit: 5)
 
     travel(SmsRelay::TTL_SECONDS + 1) do
-      assert_empty SmsRelay.inbound_since(1)
       assert_empty SmsRelay.recent([ 1 ])
+      assert_nil SmsRelay.read_result(req.id, 1)
     end
   end
 end

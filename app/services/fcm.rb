@@ -5,6 +5,7 @@ require "uri"
 require "openssl"
 require "base64"
 require "json"
+require "concurrent"
 
 # Firebase Cloud Messaging "wake" pings.
 #
@@ -24,27 +25,60 @@ module Fcm
   SCOPE     = "https://www.googleapis.com/auth/firebase.messaging".freeze
   TOKEN_URI = "https://oauth2.googleapis.com/token".freeze
 
+  # Wakes are best-effort and must never block a request (Puma) thread on Google's
+  # API. They run on a small bounded pool; when it's saturated we DROP the wake
+  # (the phone's slow fallback poll still delivers) rather than queue unboundedly
+  # or stall the agent's request. min_threads 0 => no idle threads when quiet.
+  WAKE_POOL = Concurrent::ThreadPoolExecutor.new(
+    min_threads: 0, max_threads: 5, max_queue: 100, fallback_policy: :discard
+  )
+  # Serialize OAuth token refreshes so a burst of pool threads doesn't stampede
+  # the token endpoint on a cold cache.
+  TOKEN_MUTEX = Mutex.new
+
   class << self
     def configured?
       service_account.present?
     end
 
-    # Send a wake ping to one device. Returns true if a request was sent.
+    # Non-blocking wake (use this on the request path). Resolves the FCM token on
+    # the caller thread — a cheap, already-loaded attribute, so pool threads never
+    # touch ActiveRecord — then hands the HTTPS round-trip to WAKE_POOL. Returns
+    # true if a wake was queued.
+    def wake_async(device)
+      return false unless configured?
+
+      token = device&.fcm_token
+      return false if token.blank?
+
+      WAKE_POOL.post { deliver_wake(token) }
+      true
+    rescue Concurrent::RejectedExecutionError
+      false
+    end
+
+    # Synchronous wake (blocks on Google's API). Kept for console/scripts or any
+    # caller that wants to await the result; prefer wake_async on a request thread.
     def wake(device)
       return false unless configured?
 
       token = device&.fcm_token
       return false if token.blank?
 
-      send_wake(token)
-      true
-    rescue => e
-      # Never log message content or the device token — only the failure class.
-      Rails.logger.warn("[FCM] wake failed: #{e.class}")
-      false
+      deliver_wake(token)
     end
 
     private
+
+    # Does the actual HTTPS round-trip. Best-effort: a failure is logged by class
+    # only (never message content or the device token) and swallowed.
+    def deliver_wake(fcm_token)
+      send_wake(fcm_token)
+      true
+    rescue => e
+      Rails.logger.warn("[FCM] wake failed: #{e.class}")
+      false
+    end
 
     def send_wake(fcm_token)
       body = {
@@ -66,19 +100,28 @@ module Fcm
 
     def access_token
       now = Time.now.to_i
-      return @access_token if @access_token && @access_token_exp.to_i > now + 60
+      return @access_token if fresh_token?(now)
 
-      jwt = signed_jwt(now)
-      uri = URI(TOKEN_URI)
-      request = Net::HTTP::Post.new(uri)
-      request.set_form_data(
-        "grant_type" => "urn:ietf:params:oauth:grant-type:jwt-bearer",
-        "assertion"  => jwt
-      )
-      json = JSON.parse(http_post(uri, request))
-      @access_token = json.fetch("access_token")
-      @access_token_exp = now + json.fetch("expires_in", 3600).to_i
-      @access_token
+      TOKEN_MUTEX.synchronize do
+        # Re-check inside the lock: another pool thread may have just refreshed.
+        return @access_token if fresh_token?(now)
+
+        jwt = signed_jwt(now)
+        uri = URI(TOKEN_URI)
+        request = Net::HTTP::Post.new(uri)
+        request.set_form_data(
+          "grant_type" => "urn:ietf:params:oauth:grant-type:jwt-bearer",
+          "assertion"  => jwt
+        )
+        json = JSON.parse(http_post(uri, request))
+        @access_token = json.fetch("access_token")
+        @access_token_exp = now + json.fetch("expires_in", 3600).to_i
+        @access_token
+      end
+    end
+
+    def fresh_token?(now)
+      @access_token && @access_token_exp.to_i > now + 60
     end
 
     def signed_jwt(now)

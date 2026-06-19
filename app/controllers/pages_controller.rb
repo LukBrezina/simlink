@@ -44,8 +44,8 @@ class PagesController < ApplicationController
       > dedicated phone number your AI agent can send and receive texts from.
 
       SimLink is a hosted MCP (Model Context Protocol) server. It relays SMS
-      through a real phone/SIM the user controls. Messages are relayed in memory
-      and never stored or logged.
+      through a real phone/SIM the user controls. Message content is encrypted at
+      rest, never logged, and pruned within minutes — no browsable history.
 
       ## Connect
       - MCP endpoint: #{host}/mcp  (Streamable HTTP, `Authorization: Bearer <token>`)
@@ -54,8 +54,10 @@ class PagesController < ApplicationController
 
       ## Tools
       - send_sms(to, body) — send a text from the user's shared SIM
-      - list_messages(direction?, since?, limit?) — recent in-flight messages (+ send status/error)
-      - wait_for_sms(since?) — non-blocking check for newly arrived inbound SMS
+      - list_messages(since?, limit?) — recently sent messages (+ send status/error)
+      - fetch_sms(box?, since?, address?, limit?, request_id?) — read SMS already on the
+        phone (inbox/sent). Two-step: start a read, then call again with the returned
+        request_id to get the rows. Non-blocking.
 
       ## Per-agent guides
       #{guides}

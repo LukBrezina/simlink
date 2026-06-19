@@ -8,5 +8,6 @@ Rails.application.config.filter_parameters += [
   # SMS content and endpoints: message text and phone numbers must never reach the
   # logs. `to`/`from`/`text` are anchored regexps (matched against the immediate
   # key) so they don't over-filter unrelated keys like `token` or `total`.
-  :body, :address, :phone_number, /\Ato\z/i, /\Afrom\z/i, /\Atext\z/i
+  # `messages` is the read-result upload (an array of rows the phone read).
+  :body, :address, :phone_number, :messages, /\Ato\z/i, /\Afrom\z/i, /\Atext\z/i
 ]

@@ -33,7 +33,8 @@ Rails.application.routes.draw do
       get  "outbox",    to: "outbox#index"         # non-blocking: pull queued outbound SMS
       post "heartbeat", to: "devices#heartbeat"
       post "fcm_token", to: "devices#fcm_token"    # register/refresh the FCM push token
-      post "inbound",   to: "messages#inbound"     # report a received SMS
+      get  "read_requests", to: "read_requests#index"  # claim pending fetch_sms requests
+      post "read_requests/:id/results", to: "read_requests#results" # upload read rows
       post "messages/:id/status", to: "messages#status" # report send result
     end
   end

@@ -118,7 +118,7 @@ must pick one channel and can't cross-update between them. Pick one as the
 
 ## Why not Google Play (yet)
 
-`SEND_SMS` / `RECEIVE_SMS` are restricted permissions. Play approval requires
+`SEND_SMS` / `READ_SMS` are restricted permissions. Play approval requires
 being the **default SMS handler** or fitting a narrow approved exception, plus a
 permissions-declaration review — a poor fit for an early prototype. Validate
 interest via sideload/F-Droid first. If it takes off, the Play path means

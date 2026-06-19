@@ -4,9 +4,12 @@ A prototype that relays SMS deserves plain disclosure. Show users this before
 they connect their phone, and adapt it into your privacy policy / terms.
 
 ## What the app accesses
-- **SMS send/receive** — to send texts your agents request and forward texts you
-  receive. The app does **not** read your existing SMS inbox; it only handles
-  messages that arrive while it's running and ones agents send.
+- **SMS send & read** — to send texts your agents request, and to read messages
+  already on your phone (inbox and sent) when an agent calls `fetch_sms`. Reads
+  happen **on demand** on the device — the app does **not** listen in the
+  background for incoming texts. Only the messages matching an agent's request
+  (by mailbox, time, number, and a count limit) are uploaded to your server, and
+  held only briefly — encrypted in transit, then pruned (see below).
 - **Phone/SIM info** — to list your SIM cards so you can choose which to share,
   and to send on the right SIM.
 - **Notifications** — to run the relay as a foreground service.
@@ -20,17 +23,22 @@ no analytics, ads, or trackers. It uses Google Play Services for the FCM wake
 signal; on a Google-free device it simply falls back to a periodic poll.
 
 ## What the server stores
-Message content is **not stored**. Texts are relayed **in memory only** while in
-transit (a few minutes, then dropped) and are never written to disk or to the
-logs. A server restart loses anything in flight. The database holds only:
+Message content is held **only while in transit** (a few minutes), then
+automatically pruned. While in transit it lives in the relay tables
+(`relay_outbounds` / `relay_reads`), where the **message text and phone numbers
+are encrypted at rest** (AES via Active Record encryption) and **filtered from
+the logs** — the same scheme used for agent tokens. It is never kept as a
+browsable history: once a message is delivered and ages past the short TTL, its
+row is deleted. The rest of the database holds only:
 - Account email + password (hashed).
 - SIM details you report (label, number, carrier).
 - Agent (MCP) tokens — encrypted at rest; matched by hash.
 - Your phone's push (FCM) token, so the server can send wake signals.
 
-Because message content is never persisted, there's no message history to leak or
-to delete. If you run the public instance you remain the data controller for
-account data; self-hosters keep even that on their own box.
+Because in-transit content is encrypted and short-lived, there's no plaintext
+message store and no long-term history to leak or to delete. If you run the
+public instance you remain the data controller for account data; self-hosters
+keep even that on their own box.
 
 ## Risks users must understand
 - **Carrier action (most important).** Sending automated/agent-driven SMS from a

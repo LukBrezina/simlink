@@ -18,7 +18,7 @@ class MessagesController < ApplicationController
     end
 
     SmsRelay.enqueue_outbound(sim_card_id: sim.id, subscription_id: sim.subscription_id, to: to, body: body)
-    Fcm.wake(sim.device)
+    Fcm.wake_async(sim.device)
     redirect_to messages_path, notice: "Queued — your phone will send it shortly."
   end
 end

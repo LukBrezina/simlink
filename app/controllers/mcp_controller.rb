@@ -6,8 +6,9 @@
 # Auth: `Authorization: Bearer <mcp_token>` (preferred) or a `/mcp/:token` path
 # / `?token=` for clients that can only store a URL.
 #
-# Every request returns immediately — no long-lived connections. Agents that want
-# to wait for an inbound SMS call wait_for_sms repeatedly (it's non-blocking).
+# Every request returns immediately — no long-lived connections. Agents read the
+# phone's messages by calling fetch_sms repeatedly (it's non-blocking: start a
+# read, then re-poll with the returned request_id).
 class McpController < ActionController::Base
   skip_forgery_protection
 

@@ -6,9 +6,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- SMS send & receive -->
+    <!-- Send SMS, and read messages already on the device (on-demand fetch) -->
     <uses-permission android:name="android.permission.SEND_SMS" />
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
 
     <!-- Enumerate SIMs and read their numbers -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
@@ -45,16 +45,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- Receives incoming SMS and forwards them to the server -->
-        <receiver
-            android:name=".sms.IncomingSmsReceiver"
-            android:exported="true"
-            android:permission="android.permission.BROADCAST_SMS">
-            <intent-filter android:priority="999">
-                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
-            </intent-filter>
-        </receiver>
 
         <!-- Restart the relay service after reboot -->
         <receiver
