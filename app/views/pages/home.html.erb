@@ -29,105 +29,215 @@
   </script>
 <% end %>
 
-<!-- Brand -->
-<div class="text-center pt-4">
-  <span class="font-bold text-primary inline-flex items-baseline gap-2">
-    <span class="inline-block w-2.5 h-2.5 rounded-full bg-primary self-center"></span>
-    SimLink <span class="font-normal text-xs text-gray-400">by Snáz.cz</span>
-  </span>
-</div>
+<%# Brand mark reused inline — the green square + cream bubble + amber dot %>
+<% brand_mark = capture do %>
+  <svg viewBox="0 0 512 512" aria-hidden="true">
+    <rect width="512" height="512" rx="104" fill="#1a5f4a"/>
+    <g fill="#faf8f5">
+      <rect x="112" y="150" width="288" height="176" rx="44"/>
+      <path d="M170 300 L150 376 L250 312 Z"/>
+    </g>
+    <circle cx="256" cy="238" r="66" fill="#e8a54b" opacity="0.16"/>
+    <circle cx="256" cy="238" r="38" fill="#e8a54b"/>
+  </svg>
+<% end %>
 
-<!-- Hero -->
-<section class="text-center pt-10 pb-10">
-  <span class="hero-badge mb-6">📱 SMS for AI agents</span>
-  <h1 class="text-4xl mb-4">A phone number<br>for your AI agent.</h1>
-  <p class="text-gray-600 text-lg max-w-lg mx-auto mb-8">
-    Drop a <strong>prepaid SIM</strong> into that <strong>old Android phone</strong> in your drawer,
-    share it with SimLink, and your agent can send &amp; receive real SMS — from its own dedicated number.
-  </p>
-  <div class="flex flex-col sm:flex-row gap-3 justify-center">
-    <%= link_to "Get the Android app", get_app_path, class: "btn btn-primary" %>
-    <%= link_to "Sign in", new_session_path, class: "btn btn-secondary" %>
-  </div>
-  <p class="text-sm text-gray-400 mt-4">
-    New here? <%= link_to "Create an account", new_registration_path, class: "text-primary font-medium" %>.
-  </p>
-</section>
-
-<!-- Why -->
-<section class="grid grid-cols-2 sm:grid-cols-4 gap-3 pb-10 text-center">
-  <% [
-    ["📟", "A real number", "Texts come from your actual SIM, not a shortcode."],
-    ["♻️", "Reuse an old phone", "Any spare Android becomes the relay."],
-    ["🪙", "Costs pennies", "Prepaid SIM, your normal SMS rates."],
-    ["🔒", "Private", "Encrypted in transit, never logged, pruned within minutes."]
-  ].each do |emoji, title, body| %>
-    <div class="rounded-xl border border-gray-200 bg-white p-3">
-      <div class="text-2xl mb-1"><%= emoji %></div>
-      <p class="font-medium text-sm"><%= title %></p>
-      <p class="text-xs text-gray-500 mt-0.5"><%= body %></p>
-    </div>
+<!-- ===================== TOP BAR ===================== -->
+<header class="lp-nav lp-container">
+  <%= link_to root_path, class: "lp-brand" do %>
+    <%= brand_mark %>
+    SimLink <small>by Snáz.cz</small>
   <% end %>
-</section>
+  <%= link_to "Sign in", new_session_path, class: "lp-link" %>
+</header>
 
-<!-- How it works -->
-<section class="pb-10">
-  <p class="section-label justify-center mb-6">How it works</p>
-  <ol class="grid gap-3 sm:grid-cols-3">
-    <% [
-      ["Install &amp; share a SIM", "Install the app on the old phone, sign in, pick the SIM your agent may use."],
-      ["Connect your agent", "Paste the MCP URL + token into Claude, ChatGPT, Cursor — any MCP client."],
-      ["Text away", "Your agent calls <code>send_sms</code> / <code>fetch_sms</code> — texts go through your number."]
-    ].each_with_index do |(title, body), i| %>
-      <li class="rounded-xl border border-gray-200 bg-white p-4">
-        <div class="w-7 h-7 rounded-full bg-primary text-white text-sm font-bold flex items-center justify-center mb-2"><%= i + 1 %></div>
-        <p class="font-medium mb-1"><%= title.html_safe %></p>
-        <p class="text-sm text-gray-500"><%= body.html_safe %></p>
-      </li>
-    <% end %>
-  </ol>
-</section>
-
-<!-- Run it your way -->
-<section class="pb-10">
-  <p class="section-label justify-center mb-6">Choose how to run the server</p>
-  <div class="grid gap-3 sm:grid-cols-2">
-    <div class="rounded-xl border border-gray-200 bg-white p-5 flex flex-col">
-      <p class="font-medium mb-1">☁️ Use this hosted service</p>
-      <p class="text-sm text-gray-500 flex-1">
-        Create an account on this instance and connect your phone in minutes — we run the
-        server. Messages are encrypted in transit, never logged, and pruned within minutes.
+<!-- ===================== HERO ===================== -->
+<section class="lp-hero lp-container">
+  <div class="lp-hero-grid">
+    <div class="lp-hero-copy">
+      <p class="lp-kicker"><span class="lp-dot"></span> SMS · MCP · your SIM</p>
+      <h1 class="lp-h1">A phone number<br>for your AI <em>agent</em>.</h1>
+      <p class="lp-lead">
+        Drop a <strong>prepaid SIM</strong> into that <strong>old Android phone</strong> in
+        your drawer, share it with SimLink, and your agent can <strong>send &amp; receive
+        real texts</strong> — from its own dedicated number.
       </p>
-      <%= link_to "Create an account", new_registration_path, class: "btn btn-primary mt-4" %>
+      <div class="lp-cta">
+        <%= link_to get_app_path, class: "btn btn-primary" do %>
+          Get the Android app
+        <% end %>
+        <%= link_to "Create account", new_registration_path, class: "btn btn-secondary" %>
+      </div>
+      <p class="lp-subcta">Already paired a phone? <%= link_to "Sign in", new_session_path, class: "lp-link" %>.</p>
+      <ul class="lp-chips">
+        <li>Encrypted in transit</li>
+        <li>Never logged</li>
+        <li>Open source</li>
+      </ul>
     </div>
-    <div class="rounded-xl border border-gray-200 bg-white p-5 flex flex-col">
-      <p class="font-medium mb-1">🖥️ Self-host on your own VPS</p>
-      <p class="text-sm text-gray-500 flex-1">
-        Want full control? It's open source — run the whole SimLink server yourself on your
-        own VPS with Kamal (your domain, your database). Then point the app at it and download.
+
+    <!-- the "screen": a live SMS conversation, run by the agent over the user's SIM -->
+    <div class="lp-phone">
+      <div class="lp-screen">
+        <div class="lp-screen-head">
+          <span class="lp-phoneicon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </span>
+          <div>
+            <div class="num">+1 (415) 555‑0117</div>
+            <div class="sub">your SIM · relayed by SimLink</div>
+          </div>
+          <span class="lp-live"><span class="lp-dot"></span> LIVE</span>
+        </div>
+
+        <div class="lp-thread">
+          <div class="lp-tool in" style="animation: lp-rise .55s both .15s">↳ fetch_sms</div>
+          <div class="lp-msg in" style="animation-delay:.2s">Hi! Is the studio still free this Saturday?</div>
+
+          <div class="lp-tool out" style="animation: lp-rise .55s both .8s">↳ send_sms</div>
+          <div class="lp-msg out" style="animation-delay:.85s">Yes — booked you 2–6pm. I'll text the door code Saturday morning. 🔑</div>
+
+          <div class="lp-msg in" style="animation-delay:1.5s">Amazing, thank you!</div>
+          <div class="lp-typing" style="animation-delay:2.1s" aria-hidden="true"><span></span><span></span><span></span></div>
+        </div>
+
+        <div class="lp-screen-foot" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          encrypted · never logged · pruned in minutes
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== WHY (spec sheet) ===================== -->
+<section class="lp-section lp-container">
+  <p class="lp-label">Why a real SIM</p>
+  <div class="lp-specs">
+    <% [
+      ["01", "A real number",
+       "Texts come from your actual SIM — not a shortcode or a number that gets flagged.",
+       '<path d="M5 4h4l2 5-3 2a14 14 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 6a2 2 0 0 1 2-2z"/>'],
+      ["02", "Reuse an old phone",
+       "Any spare Android in a drawer becomes the relay. No new hardware to buy.",
+       '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>'],
+      ["03", "Costs pennies",
+       "A prepaid SIM and your normal per-text rate. No subscription, no per-seat fee.",
+       '<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/>'],
+      ["04", "Private by design",
+       "Encrypted in transit, never written to logs, and pruned within minutes.",
+       '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>']
+    ].each do |idx, title, body, icon| %>
+      <div class="lp-spec">
+        <div class="ic" aria-hidden="true">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><%= icon.html_safe %></svg>
+        </div>
+        <div class="idx"><%= idx %></div>
+        <h3><%= title %></h3>
+        <p><%= body %></p>
+      </div>
+    <% end %>
+  </div>
+</section>
+
+<!-- ===================== HOW IT WORKS ===================== -->
+<section class="lp-section lp-container">
+  <p class="lp-label">How it works</p>
+  <h2 class="lp-h2">Three steps from drawer to dialled.</h2>
+  <div class="lp-steps">
+    <% [
+      ["1", "Install &amp; share a SIM", "Install the app on the old phone, sign in, and pick the SIM your agent is allowed to use."],
+      ["2", "Connect your agent", "Paste the MCP URL + token into Claude, ChatGPT, Cursor — any MCP client."],
+      ["3", "Text away", "Your agent calls <code>send_sms</code> and <code>fetch_sms</code>; messages go through your number."]
+    ].each do |n, title, body| %>
+      <div class="lp-step">
+        <div class="n"><%= n %></div>
+        <h3><%= title.html_safe %></h3>
+        <p><%= body.html_safe %></p>
+      </div>
+    <% end %>
+  </div>
+</section>
+
+<!-- ===================== RUN IT YOUR WAY ===================== -->
+<section class="lp-section lp-container">
+  <p class="lp-label">Run the server your way</p>
+  <div class="lp-paths">
+    <div class="lp-path feat">
+      <span class="tag">☁ Hosted · easiest</span>
+      <h3>Use this instance</h3>
+      <p>
+        Create an account here and connect your phone in minutes — we run the server.
+        Messages are encrypted in transit, never logged, and pruned within minutes.
+      </p>
+      <%= link_to "Create an account", new_registration_path, class: "btn btn-primary" %>
+    </div>
+    <div class="lp-path">
+      <span class="tag">⌘ Self-host · full control</span>
+      <h3>Run it on your VPS</h3>
+      <p>
+        Want full control? It's open source — deploy the whole SimLink server yourself
+        with Kamal (your domain, your database), then point the app at it.
       </p>
       <%= link_to "View on GitHub", "https://github.com/LukBrezina/simlink",
-            class: "btn btn-secondary mt-4", target: "_blank", rel: "noopener" %>
+            class: "btn btn-secondary", target: "_blank", rel: "noopener" %>
     </div>
   </div>
 </section>
 
-<!-- Works with -->
-<section id="works-with" class="pb-10 text-center">
-  <p class="section-label justify-center mb-4">Works with any MCP agent</p>
-  <div class="flex flex-wrap gap-2 justify-center">
+<!-- ===================== WORKS WITH ===================== -->
+<section id="works-with" class="lp-section lp-container">
+  <p class="lp-label">Works with any MCP agent</p>
+  <div class="lp-pills">
     <% @agents.each do |slug, a| %>
-      <%= link_to a[:name], agent_guide_path(slug),
-            class: "rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm hover:border-primary hover:text-primary transition" %>
+      <%= link_to a[:name], agent_guide_path(slug), class: "lp-pill" %>
     <% end %>
   </div>
-  <p class="text-xs text-gray-400 mt-4">
-    Building an agent? Read the <%= link_to "machine-readable summary", "/llms.txt", class: "text-primary" %>
-    or point any MCP client at <code class="text-gray-600"><%= "#{request.base_url}/mcp" %></code>.
+  <p style="margin-top:1.6rem; color:var(--lp-muted); font-size:.92rem;">
+    Building an agent? Read the <%= link_to "machine-readable summary", "/llms.txt", class: "lp-link" %>,
+    or point any MCP client at
+    <span class="lp-endpoint"><%= "#{request.base_url}/mcp" %></span>
   </p>
 </section>
 
-<!-- Trust -->
-<p class="text-center text-sm text-gray-500 rounded-xl bg-primary/5 border border-primary/20 px-4 py-3">
-  🔒 Message content is <strong>encrypted in transit</strong> — never logged, pruned within minutes. Your SIM, your number, your control.
-</p>
+<!-- ===================== TRUST CLOSER (green band) ===================== -->
+<section class="lp-band">
+  <div class="lp-container lp-section">
+    <div class="lp-trust-grid">
+      <div>
+        <p class="lp-label">Your SIM, your number, your control</p>
+        <h2 class="lp-h2">Built to forget your messages.</h2>
+        <p class="lp-trust-lead">
+          SimLink relays SMS through a phone <em>you</em> own. Message content is encrypted in
+          transit, never written to logs, and pruned within minutes — there's no browsable history.
+        </p>
+        <div class="lp-cta" style="margin-top:1.8rem;">
+          <%= link_to "Get the Android app", get_app_path, class: "btn btn-primary" %>
+          <%= link_to "Create account", new_registration_path, class: "btn btn-secondary" %>
+        </div>
+      </div>
+      <ul class="lp-trust-points">
+        <% [
+          "Encrypted in transit between phone, server, and agent.",
+          "Message bodies never hit application logs.",
+          "Transient by default — pruned within minutes, no archive.",
+          "Open source: audit it, or self-host the whole thing."
+        ].each do |point| %>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span><%= point %></span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="lp-foot lp-container">
+  SimLink — SMS for AI agents · by <span style="color:var(--color-primary); font-weight:500;">Snáz.cz</span>
+</footer>
