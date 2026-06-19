@@ -1,181 +1,70 @@
-# SimLink — by Snáz.cz
+# SimLink
 
-Give any AI agent the ability to **send SMS and read the messages on your own
-Android phone**. You install one app on your phone, create an account, pick a SIM to
-share, and the app hands you an **MCP URL + token** you paste into ChatGPT,
-Claude, or any MCP-capable agent. Authentication ties every agent to *your*
-account, so only you can use the SIM.
+**A phone number for your AI agent.** Drop a prepaid SIM into an old Android
+phone, share it with SimLink, and any MCP agent (Claude, ChatGPT, Cursor, …) can
+send & receive real SMS from your number. Messages are encrypted in transit,
+never logged, and pruned within minutes.
 
-**Messages are relayed transiently — encrypted at rest, never logged, and pruned
-within minutes.** Message text and numbers are encrypted (Active Record
-encryption) while in flight and a short TTL deletes them; there's no plaintext
-store and no browsable history.
+Two ways to use it: **register on a hosted instance**, or **self-host the server
+on your own VPS** (it's open source — instructions below).
 
-```
-┌─────────────┐   MCP (Streamable HTTP + Bearer token)   ┌──────────────┐
-│ Agent /     │ ───── send_sms · list_messages ─────────▶│              │
-│ ChatGPT /   │ ────────── fetch_sms (non-blocking) ─────▶│ Rails server │
-│ Claude      │                                           │  (the hub)   │
-└─────────────┘                                           │              │
-                                                          │  accounts    │
-┌─────────────────────────┐  device API (Bearer token)   │  SIMs        │
-│ Android app             │  pull outbox + reads (woken) ▶│  MCP tokens  │
-│ Hotwire Native UI shell │  upload read rows  ──────────▶│  (encrypted  │
-│ + Kotlin SMS bridge     │◀─ outbound SMS + read reqs ───│   TTL relay) │
-└─────────────────────────┘◀─ FCM wake (content-free) ────└──────────────┘
-        SmsManager (send) · ContentResolver (read) · SubscriptionManager (SIMs)
-```
+---
 
-## Does MCP support "push"?
+## Run it locally (dev)
 
-**The protocol supports server→client notifications, but the big hosted agents
-(ChatGPT, Claude) don't autonomously act on them** — they run a request/response
-loop, so a push doesn't "wake the model." So the agent reads on demand:
-
-1. **`fetch_sms(box:, since:, address:, request_id:)`** — reads the messages
-   already on the phone (inbox/sent). Two-step and non-blocking: the first call
-   starts a read and returns `request_id` + `pending:true`; call again with that
-   id to get the rows once the phone has uploaded them. An agent loops on it to
-   "wait" for, e.g., a one-time code. ✅
-2. **`list_messages(since:)`** — recently *sent* messages and their delivery
-   status (the relay only holds the last few minutes; there's no stored history). ✅
-
-The **phone** side does get real push: the server sends a **content-free FCM
-wake** the moment an agent queues an outbound text or a read, and the phone acts
-over HTTPS (a slow fallback poll covers a missed push). Everything is
-non-blocking — no request ever holds a server thread.
-
-True autonomy ("an agent reacting to texts 24/7") needs a long-running agent
-process you control — point it at the same MCP server and loop on `fetch_sms`.
-
-## Tech
-
-- **Backend:** Rails 8.1, SQLite, Hotwire/Turbo, Tailwind. Hand-rolled,
-  spec-compliant MCP server (Streamable HTTP / JSON-RPC) — no fragile gem.
-- **Phone app:** Android, Hotwire Native shell + native Kotlin SMS bridge.
-  (iOS can't do this — no SMS API at the OS level — so Android only, as you said.)
-
-## Repo layout
-
-```
-app/
-  controllers/mcp_controller.rb       # MCP transport: POST JSON-RPC, auth
-  services/mcp/handler.rb             # MCP tools: send_sms, list_messages, fetch_sms
-  services/sms_relay.rb               # SQLite relay: encrypted at rest, TTL-pruned, shared across workers
-  services/fcm.rb                     # content-free FCM wake pings
-  controllers/api/v1/                 # device API: outbox, read_requests, sims, status, heartbeat, fcm_token
-  controllers/{dashboards,sim_cards,mcp_tokens,messages,pairings}_controller.rb
-  models/{user,device,sim_card,mcp_token}.rb
-android/                              # the Android app (see android/README.md)
-test/integration/relay_flow_test.rb  # full agent↔server↔phone loop
-test/services/sms_relay_test.rb      # relay claim/TTL unit tests
-```
-
-## Run the server
+Requires Ruby 3.4 (`.ruby-version`).
 
 ```bash
-bin/rails db:setup        # create + migrate + seed a demo account
-bin/dev                   # or: bin/rails server -p 3001
+bin/setup                 # installs gems, prepares the DB, seeds a demo account
+bin/rails server -p 3001  # then open http://localhost:3001
 ```
 
-> Port 3000 may be taken by another app — use `PORT=3001 bin/dev` or
-> `bin/rails server -p 3001`.
-
 The seed prints a demo login (`me@example.com` / `password123`) and a ready MCP
-token. Open the printed URL, sign in, and you'll see the 3-step setup:
-**Connect phone → Share a SIM → Connect an agent.**
+token. Sign in and you'll see the 3-step setup: **Connect phone → Share a SIM →
+Connect an agent.** (Port 3000 is often taken; this uses 3001.)
+
+## Self-host on your own VPS
+
+Production runs on **[Kamal](https://kamal-deploy.org)** behind an
+auto-provisioned Let's Encrypt cert. One-time setup:
+
+```bash
+cp .env.example .env          # fill in keys (see the file's comments)
+$EDITOR config/deploy.yml     # set your server IP, domain, and registry
+bin/kamal setup               # first deploy (boots the app + proxy + TLS)
+bin/kamal deploy              # subsequent updates
+```
+
+Full step-by-step (encryption keys, backups, building the app): **[DISTRIBUTION.md](DISTRIBUTION.md)**.
+
+## Install the phone app
+
+The **only** install path is a direct download: open your SimLink site and tap
+**Download the Android app (.apk)**, then sideload it. No app store — see
+[DISTRIBUTION.md](DISTRIBUTION.md) for building & signing your own APK, and
+[android/README.md](android/README.md) for the app itself.
 
 ## Connect an agent
 
-The **Connect an agent** screen gives you copy-paste blocks. Examples:
+After sharing a SIM, the **Connect an agent** screen gives copy-paste setup. The
+short version for Claude Code:
 
-**Claude Code (one command):**
 ```bash
 claude mcp add --transport http sms "https://your-host/mcp/<MCP_TOKEN>"
 ```
 
-**URL + header (any MCP client that allows headers):**
-```
-URL:    https://your-host/mcp
-Header: Authorization: Bearer <MCP_TOKEN>
-```
-
-**JSON config (Claude Desktop / generic):**
-```json
-{ "mcpServers": { "sms": { "type": "http", "url": "https://your-host/mcp",
-  "headers": { "Authorization": "Bearer <MCP_TOKEN>" } } } }
-```
-
-**ChatGPT connectors** typically only take a URL, so use the URL-with-token form:
-`https://your-host/mcp/<MCP_TOKEN>`.
-
-Quick manual check with curl:
-```bash
-curl -s https://your-host/mcp -H "Authorization: Bearer <MCP_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
-       "params":{"name":"send_sms","arguments":{"to":"+420...","body":"hi"}}}'
-```
-
-## The Android app
-
-See **[android/README.md](android/README.md)** for build & install. In short:
-open `android/` in Android Studio, set `BASE_URL` to your server, run it on a real
-phone, sign in, tap **Connect phone**, grant SMS permissions, share a SIM.
-
-## Security model
-
-Three separate credentials, each scoped:
-
-| Credential | Who holds it | Grants |
-| --- | --- | --- |
-| Account password | You | The web UI |
-| **Device token** | Your phone (EncryptedSharedPreferences) | The device API |
-| **MCP token** | Each agent you connect | `send_sms` / `list_messages` / `fetch_sms` on **one** shared SIM |
-
-- MCP tokens are stored encrypted at rest (`ActiveRecord encrypts`) and matched by
-  SHA-256 digest. Revoke any token from the UI.
-- An MCP token is bound to a single SIM; agents never see other SIMs or accounts.
-- **Message content is encrypted at rest and never logged** — text and numbers
-  live in the relay tables (Active Record encryption) only while in transit, then
-  a short TTL deletes them. SMS fields are also filtered from request logs.
-- For production set real `AR_ENCRYPTION_*` keys (see
-  `config/initializers/active_record_encryption.rb`) and serve over HTTPS.
-
-## Tests
+## Checks before you push (CI signoff)
 
 ```bash
-bin/rails test test/integration/relay_flow_test.rb
+bin/ci   # RuboCop + bundler-audit + importmap audit + Brakeman + the full test suite
 ```
 
-Covers the whole loop: agent queues a send → phone claims it via the outbox →
-phone confirms `sent`; agent calls `fetch_sms` → phone claims the read-request,
-uploads rows → agent retrieves them; plus auth rejection and cross-device isolation.
+It stops at the first failure and prints a signoff line when everything's green.
 
-## Run it: hosted or self-hosted
+---
 
-Two ways to get a SimLink server:
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — how it works, the MCP tools, repo layout, security model.
+- **[DISTRIBUTION.md](DISTRIBUTION.md)** — deploy the server + ship the app.
+- **[PRIVACY.md](PRIVACY.md)** — data handling & responsible-use disclosures.
 
-- **Use a hosted instance** — create an account and connect your phone in minutes.
-- **Self-host on your own VPS** — run the whole server yourself with **Kamal**
-  (your domain, your database). Step-by-step in **[DISTRIBUTION.md](DISTRIBUTION.md)**.
-
-Either way the **app is installed one way only: a direct `.apk` download** served
-from the server (the **Download** button → `/download/simlink.apk`). No Play
-Store, no F-Droid. Push uses Firebase Cloud Messaging (Google Play Services) for
-the content-free wake; on Google-free devices the app falls back to a periodic
-poll. Data & responsible-use disclosures are in **[PRIVACY.md](PRIVACY.md)**.
-
-Quick deploy:
-```bash
-# edit config/deploy.yml + .env, then:
-bin/kamal setup     # first time
-bin/kamal deploy    # updates
-```
-
-## Status & next steps
-
-Built & verified (server): SQLite relay (encrypted at rest, TTL-pruned, shared
-across workers), MCP server (all 3 tools, non-blocking), device API, web UI, FCM
-wake — full suite green. Android FCM wiring is written but unbuilt (needs an APK
-build/release). Natural follow-ups: delivery receipts and per-token rate limits.
+MIT licensed. iOS can't send SMS at the OS level, so SimLink is Android-only.

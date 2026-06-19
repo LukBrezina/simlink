@@ -7,6 +7,13 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", /phone number/i
   end
 
+  test "landing page lets visitors register or self-host" do
+    get root_path
+    assert_response :success
+    assert_select "a[href=?]", new_registration_path
+    assert_select "a[href=?]", "https://github.com/LukBrezina/simlink"
+  end
+
   test "authenticated user is redirected to the dashboard" do
     sign_in_as(User.take)
     get root_path
