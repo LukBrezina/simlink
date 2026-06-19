@@ -26,8 +26,10 @@ android {
         applicationId = "cz.snaz.simlink"
         minSdk = 28
         targetSdk = 35
-        versionCode = (System.getenv("VERSION_CODE")?.toIntOrNull()) ?: 1
-        versionName = System.getenv("VERSION_NAME") ?: "0.1.0"
+        // Source of truth for the published version; env vars override for one-offs.
+        // Bump both every release — Android won't install a lower versionCode.
+        versionCode = (System.getenv("VERSION_CODE")?.toIntOrNull()) ?: 6
+        versionName = System.getenv("VERSION_NAME") ?: "0.4.2"
     }
 
     buildFeatures {
