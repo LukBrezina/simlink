@@ -13,21 +13,43 @@
       class: "block text-center rounded-xl bg-primary hover:bg-primary-light text-white font-semibold px-4 py-3.5 mb-2" do %>
   ⬇ Download the Android app (.apk)
 <% end %>
-<p class="text-center text-xs text-gray-400 mb-8">
+<p class="text-center text-xs text-gray-400 mb-6">
   Android only · sideloaded · ~18&nbsp;MB. iOS can't send SMS, so there's no iOS app.
 </p>
 
+<!-- Use a spare phone -->
+<div class="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-800 mb-8">
+  <strong>Use a spare phone.</strong> Install this on an old/secondary Android device with a prepaid
+  SIM — not the personal phone you use every day. It's a sideloaded app and hasn't been tested across
+  every phone, so treat it as experimental.
+</div>
+
 <!-- Steps -->
-<ol class="space-y-3 mb-8">
-  <%= render "downloads/step", n: 1, title: "Install on your Android phone",
-        body: "Open the downloaded file and allow installing from this source if prompted." %>
+<ol class="space-y-3 mb-6">
+  <%= render "downloads/step", n: 1, title: "Install on a spare Android phone",
+        body: "Open the downloaded .apk and tap Install. If Android warns about installing from an unknown source, allow it for your browser or Files app, then continue." %>
   <%= render "downloads/step", n: 2, title: "Open SimLink & sign in",
         body: "Create your account (or sign in) right in the app." %>
-  <%= render "downloads/step", n: 3, title: "Connect your phone & grant permissions",
-        body: "Tap “Connect phone” and allow SMS + phone permissions so SimLink can text on your behalf." %>
+  <%= render "downloads/step", n: 3, title: "Connect your phone & grant SMS permission",
+        body: "Tap “Connect phone” and allow SMS + phone permissions so SimLink can text on your behalf. If Android refuses, see the box below." %>
   <%= render "downloads/step", n: 4, title: "Share a SIM & connect an agent",
         body: "Pick the SIM to share, create a token, and paste the MCP URL into ChatGPT, Claude, or any agent." %>
 </ol>
+
+<!-- Troubleshooting: SMS permission denied -->
+<div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 mb-8">
+  <p class="font-semibold mb-1">Saw “App was denied access to SMS”?</p>
+  <p class="mb-2">
+    Android treats SMS as a restricted permission and auto-blocks it for sideloaded apps (Xiaomi/MIUI,
+    Samsung and Android&nbsp;13+ are the strictest). You have to grant it by hand — it can take some hunting:
+  </p>
+  <ol class="list-decimal pl-5 space-y-1">
+    <li>Open <strong>Settings → Apps → SimLink → Permissions → SMS</strong> and set it to <strong>Allow</strong>.</li>
+    <li>On Android&nbsp;13+, if SMS is greyed out, open the app's info page, tap the <strong>⋮</strong> menu (top-right) and choose <strong>“Allow restricted settings”</strong> first.</li>
+    <li>On Xiaomi/MIUI it's buried deeper — try <strong>Settings → Apps → Manage apps → SimLink → Permissions</strong>, and also check <em>Autostart</em> / <em>Other permissions</em>. Expect some clicking around.</li>
+  </ol>
+  <p class="mt-2">Then reopen SimLink and sign in again.</p>
+</div>
 
 <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 mb-8">
   <strong>Heads up:</strong> sending automated texts from a personal SIM can be rate-limited by your
