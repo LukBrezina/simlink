@@ -22,8 +22,19 @@ class PagesController < ApplicationController
   # normal flow (which sets return-to), so a post-login redirect lands back on
   # the dashboard instead of bouncing through here to /session/new.
   def home
+    return redirect_to(dashboard_path) if authenticated? || hotwire_native_app?
+
     @agents = AGENTS
-    redirect_to dashboard_path if authenticated? || hotwire_native_app?
+
+    # The anonymous landing is identical for every visitor, so let Cloudflare (and
+    # browsers) cache it. Skip the Rails session cookie — with no Set-Cookie the CDN
+    # caches it by default and never shares a session across visitors — and advertise
+    # a short browser TTL plus a longer shared/CDN TTL. Skip when there's a flash so a
+    # one-off message (e.g. "signed out") isn't baked into the cached HTML.
+    if flash.blank?
+      request.session_options[:skip] = true
+      expires_in 5.minutes, public: true, "s-maxage" => 10.minutes.to_i
+    end
   end
 
   # Per-agent connect guide, e.g. /for/claude.
@@ -69,7 +80,7 @@ class PagesController < ApplicationController
   # AI crawlers are welcome (default-allow); only auth/token/API paths are off-limits.
   def robots
     private_paths = %w[
-      /mcp /api/ /up /session /registration /passwords
+      /mcp /api/ /up /session /registration
       /dashboard /messages /sim_cards /mcp_tokens /setup /pairing /download
     ]
     body = +"# SimLink — SMS for AI agents. Search crawlers and AI agents welcome.\n"
