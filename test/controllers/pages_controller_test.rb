@@ -26,6 +26,22 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to dashboard_path
   end
 
+  test "the native app is detected by its own UA prefix, not the Hotwire token" do
+    # The app sets applicationUserAgentPrefix = "SimLink;". Detection must not
+    # depend on the Hotwire/Turbo library token (it gets renamed across versions).
+    get root_path, headers: { "User-Agent" => "SimLink; Mozilla/5.0 (Linux; Android 14)" }
+    assert_redirected_to dashboard_path
+  end
+
+  test "mainstream mobile browsers can load the landing page (no browser gate)" do
+    # Samsung Internet used to get a 406 from `allow_browser versions: :modern`.
+    get root_path, headers: { "User-Agent" =>
+      "Mozilla/5.0 (Linux; Android 13; SAMSUNG SM-S918B) AppleWebKit/537.36 " \
+      "(KHTML, like Gecko) SamsungBrowser/23.0 Chrome/115.0.0.0 Mobile Safari/537.36" }
+    assert_response :success
+    assert_select "h1", /phone number/i
+  end
+
   test "per-agent guide renders with the agent name" do
     get agent_guide_path("claude")
     assert_response :success

@@ -1,7 +1,9 @@
 class ApplicationController < ActionController::Base
   include Authentication
-  # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
-  allow_browser versions: :modern
+  # No browser-version gate. The public landing page must render for every
+  # visitor — `allow_browser versions: :modern` was returning 406 to mainstream
+  # mobile browsers (Samsung Internet, older Safari/Chrome), so they never saw
+  # the site. The UI is server-rendered HTML + Turbo, which works broadly.
 
   # Changes to the importmap will invalidate the etag for HTML responses
   stale_when_importmap_changes
@@ -14,9 +16,14 @@ class ApplicationController < ActionController::Base
     Current.user
   end
 
-  # True when the request comes from inside the SimLink Android app (Hotwire
-  # Native sets this in the user agent). Browser visitors get the download flow.
+  # True when the request comes from inside the SimLink Android app. We key off
+  # the app's OWN User-Agent prefix — android/.../MainApplication.kt sets
+  # `Hotwire.config.applicationUserAgentPrefix = "SimLink;"`, which is always
+  # present in the native WebView and never in a real browser. That's stabler
+  # than the Hotwire/Turbo library token (renamed "Turbo Native" → "Hotwire
+  # Native" across versions); those are kept as a belt-and-suspenders fallback.
   def hotwire_native_app?
-    request.user_agent.to_s.include?("Hotwire Native")
+    ua = request.user_agent.to_s
+    ua.include?("SimLink") || ua.include?("Hotwire Native") || ua.include?("Turbo Native")
   end
 end
