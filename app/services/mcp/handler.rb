@@ -202,24 +202,51 @@ module Mcp
           description: "Status of recently sent messages for #{sim_card.display_name} " \
                        "(transient, pruned within minutes). Use fetch_sms to read the phone's inbox.",
           mimeType: "application/json"
+        },
+        {
+          uri: "sms://status",
+          name: "Relay phone status",
+          description: "Diagnostics for #{sim_card.display_name}: the phone's installed app " \
+                       "version, when it was last seen, whether it's currently online, and how " \
+                       "many SIMs it shares. Check this if fetch_sms reads stay pending — an old " \
+                       "app version or an offline phone can't answer reads.",
+          mimeType: "application/json"
         }
       ]
     end
 
     def resources_read(params)
       uri = params["uri"]
-      raise ArgumentError, "Unknown resource: #{uri}" unless uri == "sms://recent"
+      case uri
+      when "sms://recent"
+        messages = SmsRelay.recent(sim_card.id, limit: 50).map { |e| message_json(e) }
+        json_resource(uri, messages: messages)
+      when "sms://status"
+        json_resource(uri, device_status)
+      else
+        raise ArgumentError, "Unknown resource: #{uri}"
+      end
+    end
 
-      messages = SmsRelay.recent(sim_card.id, limit: 50).map { |e| message_json(e) }
+    # A phone is considered online if it has checked in (any device API call,
+    # which the app does at least every 90s via its fallback poll) recently.
+    ONLINE_WINDOW = 3.minutes
+
+    def device_status
+      device = sim_card.device
+      last_seen = device.last_seen_at
       {
-        contents: [
-          {
-            uri: "sms://recent",
-            mimeType: "application/json",
-            text: JSON.pretty_generate(messages: messages)
-          }
-        ]
-      }
+        sim: sim_card.display_name,
+        phone_number: sim_card.phone_number,
+        app_version: device.app_version,
+        last_seen_at: last_seen&.iso8601,
+        online: last_seen.present? && last_seen > ONLINE_WINDOW.ago,
+        shared_sims: device.sim_cards.shared.count
+      }.compact
+    end
+
+    def json_resource(uri, payload)
+      { contents: [ { uri: uri, mimeType: "application/json", text: JSON.pretty_generate(payload) } ] }
     end
 
     def tool_definitions

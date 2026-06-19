@@ -38,6 +38,23 @@ class RelayFlowTest < ActionDispatch::IntegrationTest
     assert_equal %w[send_sms list_messages fetch_sms].sort, names.sort
   end
 
+  test "sms://status resource surfaces the phone's reported app version" do
+    # The phone checks in carrying its version header, exactly as the real app does.
+    post "/api/v1/heartbeat", params: {}.to_json,
+         headers: {
+           "Authorization" => "Bearer #{@device_token}",
+           "Content-Type" => "application/json",
+           "X-App-Version" => "0.4.0"
+         }
+    assert_response :success
+
+    res = mcp_call("resources/read", { uri: "sms://status" })
+    payload = JSON.parse(res.dig("result", "contents", 0, "text"))
+    assert_equal "0.4.0", payload["app_version"]
+    assert_equal true, payload["online"]
+    assert_equal 1, payload["shared_sims"]
+  end
+
   test "unauthorized mcp request is rejected" do
     post "/mcp", params: { jsonrpc: "2.0", id: 1, method: "tools/list" }.to_json,
          headers: { "Content-Type" => "application/json" }
