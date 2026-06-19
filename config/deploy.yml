@@ -25,6 +25,10 @@ registry:
 # Server is amd64; this Mac is arm64, so cross-build (buildx/emulation).
 builder:
   arch: amd64
+  # Build from the working dir (not a fresh git clone) so the gitignored, on-disk
+  # downloads/simlink.apk is baked into the image and served at /download/simlink.apk.
+  # Kamal does a clean git-clone build only when `context` is unset.
+  context: "."
 
 env:
   clear:
