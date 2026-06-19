@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "956484041044",
-    "project_id": "snaz-488610",
-    "storage_bucket": "snaz-488610.firebasestorage.app"
+    "project_number": "000000000000",
+    "project_id": "your-firebase-project-id",
+    "storage_bucket": "your-firebase-project-id.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:956484041044:android:154dafd07d8b0a44cb30c1",
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
         "android_client_info": {
           "package_name": "cz.snaz.simlink"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDKMVLe5mb_dGQEHXLF1aJ3G1ur9AlbF-M"
+          "current_key": "REPLACE_WITH_YOUR_FIREBASE_ANDROID_API_KEY"
         }
       ],
       "services": {

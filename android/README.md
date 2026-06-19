@@ -38,6 +38,23 @@ release { buildConfigField("String", "BASE_URL", "\"https://sms.example.com\"") 
 For building & signing a release and serving it as a direct download from your
 server, see **[../DISTRIBUTION.md](../DISTRIBUTION.md)**.
 
+## Firebase config (`google-services.json`)
+
+The build needs `app/google-services.json` (the Google Services Gradle plugin
+won't configure without it). FCM push — the server waking the phone instantly —
+is **optional**; without it the phone falls back to a periodic poll.
+
+- **Don't want push?** Nothing to do. The build auto-seeds a placeholder from
+  `app/google-services.json.example`, so it compiles and the phone polls.
+- **Want push?** Create your **own** Firebase project, add an **Android app**
+  with package name `cz.snaz.simlink` (the app's `applicationId`), download that
+  project's `google-services.json`, and drop it in `app/`. Then enable the server
+  side — see [../DISTRIBUTION.md](../DISTRIBUTION.md) › **Enable FCM push**. Both
+  halves must come from the **same** Firebase project.
+
+`app/google-services.json` is gitignored — never commit a real one. It ties the
+app to your Firebase project and exposes that project's Android API key.
+
 ## Build & install
 
 1. Open the **`android/`** folder in Android Studio. On first sync it provisions
@@ -69,10 +86,10 @@ server, see **[../DISTRIBUTION.md](../DISTRIBUTION.md)**.
   permissions. This app is designed to be **sideloaded onto your own phone**; it
   is not intended for Play Store distribution without Google's SMS-permission
   exception. It does **not** need to be the default SMS app.
-- **Battery / Doze:** a foreground service is the Firebase-free way to stay
-  responsive. Exclude the app from battery optimization for reliability. The
-  production-grade alternative is **FCM push** (server wakes the phone instead of
-  the phone polling) — a clean future upgrade that reuses the same endpoints.
+- **Battery / Doze:** a foreground service keeps the phone responsive even
+  without push; exclude the app from battery optimization for reliability.
+  **FCM push** (server wakes the phone instead of the phone polling) is wired and
+  optional — enable it via the Firebase config section above.
 - **Dual SIM:** reads are scoped to the token's SIM by the provider's `sub_id`
   column when the OEM populates it; rows with no `sub_id` are kept (never wrongly
   dropped). Single-SIM is unambiguous.

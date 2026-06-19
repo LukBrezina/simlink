@@ -43,6 +43,24 @@ Google Play, no F-Droid, no Obtainium. Users get the app one way: they tap
 - `bin/kamal app exec --interactive --reuse "bin/rails console"` for admin tasks.
 - **Back up** the `sms_for_agents_storage` Docker volume — it holds the SQLite DB.
 
+### Enable FCM push (optional)
+
+By default the phone polls for queued work. To have the server wake it instantly
+instead, set up **one Firebase project** that supplies both halves of the link:
+
+1. Create a Firebase project (or reuse one) and add an **Android app** with
+   package name `cz.snaz.simlink` — the app's `applicationId`.
+2. **Client:** download that project's `google-services.json` and drop it in
+   `android/app/` (gitignored). See [android/README.md](android/README.md).
+3. **Server:** in the same project, create a **service account** key
+   (Project settings → Service accounts → *Generate new private key*) and paste
+   the full JSON into `.env` as `FCM_SERVICE_ACCOUNT_JSON`, then redeploy.
+
+Both must come from the **same** project: the device's FCM token is minted
+against the app config, and the server pushes to the project named in the
+service account. If either is missing, push is skipped and the poll still
+delivers (`app/services/fcm.rb` is best-effort by design).
+
 ---
 
 ## 2. Point the app at your server

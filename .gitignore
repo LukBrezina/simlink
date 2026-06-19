@@ -50,3 +50,8 @@
 
 # Firebase service-account keys — never commit
 *firebase-adminsdk*.json
+
+# Per-project Firebase client config — each self-hoster supplies their own
+# (the build seeds it from google-services.json.example if absent). Never commit
+# a real one: it ties the app to your Firebase project and exposes its API key.
+/android/app/google-services.json
