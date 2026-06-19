@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand">#2563EB</color>
-    <color name="brand_dark">#1D4ED8</color>
+    <!-- Snáz brand: green primary + amber accent (matches the web app and favicon). -->
+    <color name="brand">#1A5F4A</color>
+    <color name="brand_dark">#0F3D2F</color>
+    <color name="brand_amber">#E8A54B</color>
+    <color name="cream">#FAF8F5</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

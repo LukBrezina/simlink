@@ -41,9 +41,14 @@ Rails.application.routes.draw do
 
   get "up" => "rails/health#show", as: :rails_health_check
 
+  # --- PWA web-app manifest (proper name/icon/theme when "added to home screen") ---
+  get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
+
   # Public marketing + agent-discovery pages
-  get "for/:slug", to: "pages#agent", as: :agent_guide
-  get "llms.txt",  to: "pages#llms", format: false
+  get "for/:slug",   to: "pages#agent", as: :agent_guide
+  get "llms.txt",    to: "pages#llms", format: false
+  get "robots.txt",  to: "pages#robots", format: false
+  get "sitemap.xml", to: "pages#sitemap", format: false
 
   root "pages#home"
 end

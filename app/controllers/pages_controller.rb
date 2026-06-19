@@ -1,5 +1,5 @@
 class PagesController < ApplicationController
-  allow_unauthenticated_access only: %i[home agent llms]
+  allow_unauthenticated_access only: %i[home agent llms robots sitemap]
 
   # Per-agent connect guides. `method` picks how the connect snippet renders.
   AGENTS = {
@@ -63,5 +63,31 @@ class PagesController < ApplicationController
       #{guides}
     TXT
     render plain: body, content_type: "text/plain"
+  end
+
+  # robots.txt — host-aware so it stays correct on any self-hosted instance.
+  # AI crawlers are welcome (default-allow); only auth/token/API paths are off-limits.
+  def robots
+    private_paths = %w[
+      /mcp /api/ /up /session /registration /passwords
+      /dashboard /messages /sim_cards /mcp_tokens /setup /pairing /download
+    ]
+    body = +"# SimLink — SMS for AI agents. Search crawlers and AI agents welcome.\n"
+    body << "User-agent: *\n"
+    private_paths.each { |p| body << "Disallow: #{p}\n" }
+    body << "\nSitemap: #{request.base_url}/sitemap.xml\n"
+    render plain: body, content_type: "text/plain"
+  end
+
+  # sitemap.xml — the public, crawlable surface (landing, app page, agent guides).
+  def sitemap
+    host = request.base_url
+    locs = [ host, "#{host}/get", "#{host}/llms.txt" ] +
+           AGENTS.keys.map { |slug| "#{host}/for/#{slug}" }
+    xml = +%(<?xml version="1.0" encoding="UTF-8"?>\n)
+    xml << %(<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n)
+    locs.each { |loc| xml << "  <url><loc>#{loc}</loc></url>\n" }
+    xml << "</urlset>\n"
+    render plain: xml, content_type: "application/xml"
   end
 end

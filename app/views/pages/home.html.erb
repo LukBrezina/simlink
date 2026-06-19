@@ -7,15 +7,22 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="<%= request.original_url %>">
   <meta name="twitter:card" content="summary">
-  <link rel="alternate" type="text/plain" title="LLM-readable summary" href="/llms.txt">
   <script type="application/ld+json">
     <%= raw({
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "SimLink",
+      "alternateName": "SimLink — SMS for AI agents",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Android, Web",
       "description": "A hosted MCP server that lets an AI agent send and receive SMS through a real phone/SIM the user controls.",
+      "featureList": [
+        "Send SMS from a real phone number over MCP (send_sms)",
+        "Receive and read SMS over MCP (fetch_sms, list_messages)",
+        "Works with any MCP client (Claude, ChatGPT, Cursor, and more)",
+        "Encrypted in transit, never logged, pruned within minutes"
+      ],
+      "keywords": "MCP, SMS, AI agent, phone number, Android, Claude, ChatGPT",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "url": request.base_url
     }.to_json) %>
@@ -106,7 +113,7 @@
 </section>
 
 <!-- Works with -->
-<section class="pb-10 text-center">
+<section id="works-with" class="pb-10 text-center">
   <p class="section-label justify-center mb-4">Works with any MCP agent</p>
   <div class="flex flex-wrap gap-2 justify-center">
     <% @agents.each do |slug, a| %>
@@ -114,6 +121,10 @@
             class: "rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm hover:border-primary hover:text-primary transition" %>
     <% end %>
   </div>
+  <p class="text-xs text-gray-400 mt-4">
+    Building an agent? Read the <%= link_to "machine-readable summary", "/llms.txt", class: "text-primary" %>
+    or point any MCP client at <code class="text-gray-600"><%= "#{request.base_url}/mcp" %></code>.
+  </p>
 </section>
 
 <!-- Trust -->
