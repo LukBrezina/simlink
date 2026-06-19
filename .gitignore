@@ -55,3 +55,9 @@
 # (the build seeds it from google-services.json.example if absent). Never commit
 # a real one: it ties the app to your Firebase project and exposes its API key.
 /android/app/google-services.json
+
+# Published APKs are built locally and served from /get. The deploy image picks
+# them up from disk (Dockerfile COPY), so they ship without being committed — and
+# a committed APK would bake in your domain + Firebase key. Keep the dir, not the binaries.
+/downloads/*
+!/downloads/.keep

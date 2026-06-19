@@ -54,8 +54,10 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Your public server.
-            buildConfigField("String", "BASE_URL", "\"https://simlink.snaz.cz\"")
+            // Your public server. Set SIMLINK_BASE_URL at build time; the default
+            // is a placeholder so a fresh clone still compiles. See DISTRIBUTION.md.
+            val baseUrl = System.getenv("SIMLINK_BASE_URL") ?: "https://sms.example.com"
+            buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }

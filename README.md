@@ -29,8 +29,7 @@ Production runs on **[Kamal](https://kamal-deploy.org)** behind an
 auto-provisioned Let's Encrypt cert. One-time setup:
 
 ```bash
-cp .env.example .env          # fill in keys (see the file's comments)
-$EDITOR config/deploy.yml     # set your server IP, domain, and registry
+cp .env.example .env          # set APP_HOST + keys (see the file's comments)
 bin/kamal setup               # first deploy (boots the app + proxy + TLS)
 bin/kamal deploy              # subsequent updates
 ```

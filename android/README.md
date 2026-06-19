@@ -24,15 +24,12 @@ UI, plus the native pieces Android needs for SMS:
 
 `BASE_URL` is set per build type in `app/build.gradle.kts`:
 
-```kotlin
-debug   { buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:3001\"") }
-release { buildConfigField("String", "BASE_URL", "\"https://sms.example.com\"") }
-```
-
-- **debug** → `10.0.2.2:3001` is the emulator's alias for your host's
+- **debug** → `http://10.0.2.2:3001`, the emulator's alias for your host's
   `localhost:3001`. For a real phone in dev, use your LAN IP
   (`http://192.168.x.x:3001`) or an `ngrok` tunnel.
-- **release** → your deployed HTTPS server. With HTTPS you can drop
+- **release** → your deployed HTTPS server. Set it at build time:
+  `SIMLINK_BASE_URL="https://your-host" ./gradlew assembleRelease` (defaults to a
+  placeholder so a fresh clone still compiles). With HTTPS you can drop
   `android:usesCleartextTraffic="true"` from the manifest.
 
 For building & signing a release and serving it as a direct download from your

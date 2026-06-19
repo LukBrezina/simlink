@@ -1,127 +1,68 @@
-# Distributing SimLink (prototype)
+# Distributing SimLink
 
-The plan: **host the server on your VPS with Kamal**, then build & sign the APK
-and **serve it as a direct download from your own server**. No app store — no
-Google Play, no F-Droid, no Obtainium. Users get the app one way: they tap
-**Download** on your site and sideload the `.apk`.
+Host the server on your VPS, then build the APK and serve it as a direct
+download from that server. No app store — users tap **Download** on your site and
+sideload the `.apk`.
 
+## 1. Deploy the server
+
+You need a VPS (Docker + SSH) and a domain with an A record pointing at it.
+
+```bash
+cp .env.example .env     # set APP_HOST + the keys (comments explain each)
+bin/kamal setup          # first deploy: boots app + proxy + Let's Encrypt TLS
+bin/kamal deploy         # later updates
 ```
- your VPS (Kamal) ── https://sms.example.com ──┐
-                                               │  signed APK served at /get
- users ──────────▶ open the site ─────────────┴──▶ Download → sideload
-```
 
----
+Everything host-specific lives in `.env` — you don't edit `config/deploy.yml`.
+Back up the `simlink_storage` Docker volume; it holds the SQLite DB.
 
-## 1. Deploy the server (Kamal)
+## 2. Build the app pointed at your server
 
-**Prerequisites**
-- A VPS with Docker-capable Linux and SSH access.
-- A domain with an **A record** pointing at the VPS (e.g. `sms.example.com`).
-- A container registry account (Docker Hub or GHCR) + an access token.
+One-time keystore (back it up — losing it means no more updates users can install
+over the top):
 
-**Configure**
-1. Edit `config/deploy.yml` — set `image`, `servers.web` (VPS IP),
-   `proxy.host` (domain), `registry.username`, and `builder.arch` (`amd64` or
-   `arm64` to match the VPS).
-2. `cp .env.example .env` and fill it in. Generate fresh encryption keys:
-   ```bash
-   bin/rails runner 'puts SecureRandom.alphanumeric(32)'   # x3
-   cat config/master.key                                   # RAILS_MASTER_KEY
-   ```
-3. Deploy:
-   ```bash
-   bin/kamal setup     # first time: installs Docker bits, proxy, boots the app
-   # later updates:
-   bin/kamal deploy
-   ```
-   kamal-proxy auto-provisions a Let's Encrypt certificate for your domain.
-   Migrations run automatically on boot (`db:prepare` in the entrypoint).
-
-**After deploy**
-- Visit `https://sms.example.com`, create your account.
-- `bin/kamal app exec --interactive --reuse "bin/rails console"` for admin tasks.
-- **Back up** the `sms_for_agents_storage` Docker volume — it holds the SQLite DB.
-
-### Enable FCM push (optional)
-
-By default the phone polls for queued work. To have the server wake it instantly
-instead, set up **one Firebase project** that supplies both halves of the link:
-
-1. Create a Firebase project (or reuse one) and add an **Android app** with
-   package name `cz.snaz.simlink` — the app's `applicationId`.
-2. **Client:** download that project's `google-services.json` and drop it in
-   `android/app/` (gitignored). See [android/README.md](android/README.md).
-3. **Server:** in the same project, create a **service account** key
-   (Project settings → Service accounts → *Generate new private key*) and paste
-   the full JSON into `.env` as `FCM_SERVICE_ACCOUNT_JSON`, then redeploy.
-
-Both must come from the **same** project: the device's FCM token is minted
-against the app config, and the server pushes to the project named in the
-service account. If either is missing, push is skipped and the poll still
-delivers (`app/services/fcm.rb` is best-effort by design).
-
----
-
-## 2. Point the app at your server
-
-In `android/app/build.gradle.kts`, set the **release** `BASE_URL`:
-```kotlin
-release { buildConfigField("String", "BASE_URL", "\"https://sms.example.com\"") }
-```
-(Debug stays `http://10.0.2.2:3001` for the emulator.)
-
----
-
-## 3. Build & sign the APK
-
-**One-time keystore** (keep it and its passwords backed up forever — losing them
-means you can never ship an update users can install over the top):
 ```bash
 cd android
 keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 \
-        -validity 10000 -alias smsforagents
+        -validity 10000 -alias simlink
 cp keystore.properties.example keystore.properties   # fill in the passwords
 ```
 
-**Build the signed release APK:**
+Build, pointing the release at your domain:
+
 ```bash
-cd android && ./gradlew assembleRelease
+SIMLINK_BASE_URL="https://$APP_HOST" ./gradlew assembleRelease
 # -> app/build/outputs/apk/release/app-release.apk
 ```
-(If you don't have the Gradle wrapper yet, run `gradle wrapper` once or open the
-project in Android Studio.)
 
----
+## 3. Publish the APK
 
-## 4. Serve the APK as a direct download
+The app serves whatever sits at `downloads/simlink.apk` (the **Download** button
+links to `/download/simlink.apk`). It's gitignored — the deploy image picks it up
+from disk, so it's never committed:
 
-The Rails app serves whatever APK lives at `downloads/simlink.apk` — the
-**Download** button (`/get`) links to `/download/simlink.apk` with the right
-Android MIME type, so it installs cleanly when sideloaded.
-
-To publish a new version:
 ```bash
 cp android/app/build/outputs/apk/release/app-release.apk downloads/simlink.apk
-git add downloads/simlink.apk && git commit -m "Publish app vX.Y.Z"
-bin/kamal deploy      # the APK is baked into the image and served from the VPS
+bin/kamal deploy
 ```
 
-Users install by visiting your site and tapping **Download** — that's the only
-install path. They'll be prompted to allow installing from this source the first
-time.
+## Optional: FCM push
 
----
+By default the phone polls for queued work. To wake it instantly instead, set up
+**one Firebase project** for both halves:
+
+1. Add an **Android app** with package name `cz.snaz.simlink` (the `applicationId`),
+   download its `google-services.json`, drop it in `android/app/` (gitignored).
+2. In the same project create a **service account** key and paste the JSON into
+   `.env` as `FCM_SERVICE_ACCOUNT_JSON`, then redeploy.
+
+Both must come from the same project. If either is missing, push is skipped and
+the poll still delivers (`app/services/fcm.rb` is best-effort).
 
 ## Why no app store
 
-`SEND_SMS` / `READ_SMS` are restricted permissions. **Google Play** approval
-requires being the **default SMS handler** or fitting a narrow approved
-exception, plus a permissions-declaration review — a poor fit for an early
-prototype. **F-Droid** rebuilds from source and signs with its own key, so its
-APK can't update over a directly-downloaded one (and vice-versa) — a confusing
-two-channel split. Direct sideload keeps it to **one signature, one install
-path**. Validate interest this way first; if it takes off, the Play path means
-rebuilding the app as a full default-SMS handler.
-
-See **[PRIVACY.md](PRIVACY.md)** for the data/risk disclosures to show users.
+`SEND_SMS` / `READ_SMS` are restricted permissions: Google Play needs you to be
+the default SMS handler, and F-Droid's own signing key can't update a
+directly-downloaded APK. Direct sideload keeps it to one signature, one install
+path. See **[PRIVACY.md](PRIVACY.md)** for the user-facing disclosures.

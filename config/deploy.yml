@@ -1,24 +1,26 @@
-# Kamal deploy config for SimLink — mirrors the bezosy setup (same server +
-# local registry). Deploy with: bin/kamal setup (first time) / bin/kamal deploy.
+# Kamal deploy config for SimLink. Host-specific values come from .env
+# (copy .env.example → .env). Deploy: bin/kamal setup (first time) / bin/kamal deploy.
 
 service: simlink
 image: simlink
 
 servers:
   web:
-    # server.brezinovi.sk is Cloudflare-proxied (port 22 is not reachable), so set
-    # SIMLINK_SSH_HOST=<origin IP> in .env for Kamal's SSH. Keeps the IP out of git.
-    - <%= ENV["SIMLINK_SSH_HOST"] || "server.brezinovi.sk" %>
+    # Where Kamal SSHes to deploy. Defaults to APP_HOST; set SIMLINK_SSH_HOST in
+    # .env when the public host isn't reachable on port 22 (e.g. behind a
+    # Cloudflare proxy — use the origin IP — or a Tailscale name).
+    - <%= ENV["SIMLINK_SSH_HOST"].presence || ENV["APP_HOST"] %>
 
 # kamal-proxy terminates TLS (Let's Encrypt) and lets several apps share the box.
 # Requires config.assume_ssl + config.force_ssl in production.rb (already on).
 proxy:
   ssl: true
-  host: simlink.snaz.cz
+  host: <%= ENV["APP_HOST"] %>
 
-# Local registry on the server (same as bezosy). Unauthenticated.
+# Local registry on the server. Unauthenticated. Point KAMAL_REGISTRY_SERVER at a
+# hosted registry (Docker Hub / GHCR) in .env if you prefer one.
 registry:
-  server: localhost:5555
+  server: <%= ENV["KAMAL_REGISTRY_SERVER"].presence || "localhost:5555" %>
 
 # Server is amd64; this Mac is arm64, so cross-build (buildx/emulation).
 builder:
@@ -27,6 +29,7 @@ builder:
 env:
   clear:
     SOLID_QUEUE_IN_PUMA: true   # run jobs inside Puma (no separate job host)
+    APP_HOST: <%= ENV["APP_HOST"] %>   # mailer link host (config/environments/production.rb)
   secret:
     - RAILS_MASTER_KEY
     - AR_ENCRYPTION_PRIMARY_KEY
