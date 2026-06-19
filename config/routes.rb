@@ -2,7 +2,6 @@ Rails.application.routes.draw do
   # --- Authentication (Rails 8 generated) ---
   resource :session
   resource :registration, only: %i[new create]
-  resources :passwords, param: :token
 
   # --- Public "get the app" page + signed APK download ---
   get "get", to: "downloads#show", as: :get_app

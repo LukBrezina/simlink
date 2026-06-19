@@ -5,7 +5,7 @@ require "test_helper"
 class RelayFlowTest < ActionDispatch::IntegrationTest
   setup do
     SmsRelay.reset!
-    @user = User.create!(email_address: "loop@example.com", password: "password123")
+    @user = User.create!(nickname: "loop", password: "password123")
     @device = @user.devices.create!(name: "Test Phone", platform: "android")
     @device_token = @device.token # plaintext available right after create
     @sim = @device.sim_cards.create!(
@@ -152,7 +152,7 @@ class RelayFlowTest < ActionDispatch::IntegrationTest
   test "device cannot claim another device's read requests" do
     tool("fetch_sms", {})
 
-    other_user = User.create!(email_address: "other-read@example.com", password: "password123")
+    other_user = User.create!(nickname: "other-read", password: "password123")
     other_device = other_user.devices.create!(name: "Other", platform: "android")
     get "/api/v1/read_requests", headers: { "Authorization" => "Bearer #{other_device.token}" }
     assert_response :success
@@ -162,7 +162,7 @@ class RelayFlowTest < ActionDispatch::IntegrationTest
   test "device cannot claim another device's messages" do
     tool("send_sms", { to: "+420123456789", body: "for-owner" })
 
-    other_user = User.create!(email_address: "other@example.com", password: "password123")
+    other_user = User.create!(nickname: "other", password: "password123")
     other_device = other_user.devices.create!(name: "Other", platform: "android")
     get "/api/v1/outbox", headers: { "Authorization" => "Bearer #{other_device.token}" }
     assert_response :success

@@ -5,8 +5,8 @@
 
   <%= form_with url: session_url, class: "space-y-4" do |form| %>
     <div>
-      <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username",
-            placeholder: "you@example.com", value: params[:email_address],
+      <%= form.text_field :nickname, required: true, autofocus: true, autocomplete: "username",
+            placeholder: "nickname", value: params[:nickname],
             class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-primary" %>
     </div>
     <div>
@@ -20,7 +20,6 @@
 
   <div class="flex items-center justify-between text-sm mt-6">
     <%= link_to "Create account", new_registration_path, class: "text-primary font-medium" %>
-    <%= link_to "Forgot password?", new_password_path, class: "text-gray-500 underline hover:no-underline" %>
   </div>
 
   <div class="mt-8 pt-6 border-t border-gray-100 text-center">

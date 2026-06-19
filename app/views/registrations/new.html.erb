@@ -11,8 +11,8 @@
     <% end %>
 
     <div>
-      <%= form.label :email_address, "Email", class: "block text-sm font-medium mb-1" %>
-      <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username",
+      <%= form.label :nickname, "Nickname", class: "block text-sm font-medium mb-1" %>
+      <%= form.text_field :nickname, required: true, autofocus: true, autocomplete: "username",
             class: "block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-primary" %>
     </div>
     <div>

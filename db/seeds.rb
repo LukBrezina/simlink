@@ -1,7 +1,7 @@
 # Idempotent dev seed: one user, one phone, one shared SIM, one MCP token.
 # Prints the secrets you need for local testing.
 
-user = User.find_or_create_by!(email_address: "me@example.com") do |u|
+user = User.find_or_create_by!(nickname: "me") do |u|
   u.password = "password123"
 end
 
@@ -21,7 +21,7 @@ token = user.mcp_tokens.active.find_by(sim_card: sim) ||
 
 puts "=" * 64
 puts "Seed complete."
-puts "  Login:        me@example.com / password123"
+puts "  Login:        me / password123"
 puts "  Device token: #{device.token || '(only shown on first create; reset DB to see)'}"
 puts "  MCP token:    #{token.token}"
 puts "  MCP URL:      http://localhost:3000/mcp"

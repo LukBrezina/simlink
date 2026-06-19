@@ -4,7 +4,7 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
   test "anonymous visitor sees the landing page" do
     get root_path
     assert_response :success
-    assert_select "h1", /phone number/i
+    assert_select "h1", /over MCP/i
   end
 
   test "landing page lets visitors register or self-host" do
@@ -39,7 +39,7 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
       "Mozilla/5.0 (Linux; Android 13; SAMSUNG SM-S918B) AppleWebKit/537.36 " \
       "(KHTML, like Gecko) SamsungBrowser/23.0 Chrome/115.0.0.0 Mobile Safari/537.36" }
     assert_response :success
-    assert_select "h1", /phone number/i
+    assert_select "h1", /over MCP/i
   end
 
   test "per-agent guide renders with the agent name" do

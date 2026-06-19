@@ -5,9 +5,8 @@ class User < ApplicationRecord
   has_many :sim_cards, through: :devices
   has_many :mcp_tokens, dependent: :destroy
 
-  normalizes :email_address, with: ->(e) { e.strip.downcase }
+  normalizes :nickname, with: ->(n) { n.strip.downcase }
 
-  validates :email_address, presence: true, uniqueness: true,
-            format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :nickname, presence: true, uniqueness: true
   validates :password, length: { minimum: 8 }, allow_nil: true
 end
