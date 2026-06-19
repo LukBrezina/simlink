@@ -1,14 +1,14 @@
-# Distributing SMS for Agents (prototype)
+# Distributing SimLink (prototype)
 
-The plan: **host the server on your VPS with Kamal**, then ship the app via
-**GitHub Releases + Obtainium** and **F-Droid**. No Google Play (its SMS
-permission policy makes that a separate, larger effort — see the end).
+The plan: **host the server on your VPS with Kamal**, then build & sign the APK
+and **serve it as a direct download from your own server**. No app store — no
+Google Play, no F-Droid, no Obtainium. Users get the app one way: they tap
+**Download** on your site and sideload the `.apk`.
 
 ```
  your VPS (Kamal) ── https://sms.example.com ──┐
-                                               │  signed APK
- GitHub Releases ──▶ Obtainium (auto-update) ──┤──▶ users install
- F-Droid ──────────▶ F-Droid client ───────────┘
+                                               │  signed APK served at /get
+ users ──────────▶ open the site ─────────────┴──▶ Download → sideload
 ```
 
 ---
@@ -58,7 +58,7 @@ release { buildConfigField("String", "BASE_URL", "\"https://sms.example.com\"") 
 ## 3. Build & sign the APK
 
 **One-time keystore** (keep it and its passwords backed up forever — losing them
-means you can never update the GitHub/Obtainium build):
+means you can never ship an update users can install over the top):
 ```bash
 cd android
 keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 \
@@ -66,62 +66,44 @@ keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 \
 cp keystore.properties.example keystore.properties   # fill in the passwords
 ```
 
-**Commit the Gradle wrapper** (required by CI *and* F-Droid):
-```bash
-cd android && gradle wrapper        # or open once in Android Studio
-git add android/gradlew android/gradlew.bat android/gradle/wrapper/gradle-wrapper.jar
-```
-
-**Build locally:**
+**Build the signed release APK:**
 ```bash
 cd android && ./gradlew assembleRelease
 # -> app/build/outputs/apk/release/app-release.apk
 ```
+(If you don't have the Gradle wrapper yet, run `gradle wrapper` once or open the
+project in Android Studio.)
 
 ---
 
-## 4. Publish via GitHub Releases + Obtainium
+## 4. Serve the APK as a direct download
 
-CI (`.github/workflows/android-release.yml`) builds + signs + publishes on a tag.
+The Rails app serves whatever APK lives at `downloads/simlink.apk` — the
+**Download** button (`/get`) links to `/download/simlink.apk` with the right
+Android MIME type, so it installs cleanly when sideloaded.
 
-1. Add repo secrets (Settings → Secrets → Actions):
-   `KEYSTORE_BASE64` (`base64 -i android/release.jks`), `KEYSTORE_PASSWORD`,
-   `KEY_ALIAS`, `KEY_PASSWORD`.
-2. Release:
-   ```bash
-   git tag v0.1.0 && git push origin v0.1.0
-   ```
-   The APK appears on the GitHub Releases page.
-3. **Users install** by adding your GitHub repo URL in
-   [Obtainium](https://github.com/ImranR98/Obtainium) — it tracks releases and
-   auto-updates. (Or they download the APK directly.)
+To publish a new version:
+```bash
+cp android/app/build/outputs/apk/release/app-release.apk downloads/simlink.apk
+git add downloads/simlink.apk && git commit -m "Publish app vX.Y.Z"
+bin/kamal deploy      # the APK is baked into the image and served from the VPS
+```
 
----
-
-## 5. Publish via F-Droid
-
-The app is fully FOSS (no Google services), so it qualifies.
-
-1. Make the repo public and MIT-licensed (already set: `LICENSE`).
-2. Ensure the Gradle wrapper is committed (step 3) and a `v*` tag exists.
-3. Submit `fdroid/com.smsforagents.app.yml` (edit `YOUR_GH_USER`) as a
-   **Request For Packaging** merge request to
-   [fdroiddata](https://gitlab.com/fdroid/fdroiddata). Listing text/screenshots
-   come from `android/fastlane/metadata/`.
-
-**Caveat:** F-Droid rebuilds from source and signs with **its own key**. So the
-F-Droid APK and your GitHub/Obtainium APK have **different signatures** — a user
-must pick one channel and can't cross-update between them. Pick one as the
-"official" install path in your README to avoid confusion.
+Users install by visiting your site and tapping **Download** — that's the only
+install path. They'll be prompted to allow installing from this source the first
+time.
 
 ---
 
-## Why not Google Play (yet)
+## Why no app store
 
-`SEND_SMS` / `READ_SMS` are restricted permissions. Play approval requires
-being the **default SMS handler** or fitting a narrow approved exception, plus a
-permissions-declaration review — a poor fit for an early prototype. Validate
-interest via sideload/F-Droid first. If it takes off, the Play path means
+`SEND_SMS` / `READ_SMS` are restricted permissions. **Google Play** approval
+requires being the **default SMS handler** or fitting a narrow approved
+exception, plus a permissions-declaration review — a poor fit for an early
+prototype. **F-Droid** rebuilds from source and signs with its own key, so its
+APK can't update over a directly-downloaded one (and vice-versa) — a confusing
+two-channel split. Direct sideload keeps it to **one signature, one install
+path**. Validate interest this way first; if it takes off, the Play path means
 rebuilding the app as a full default-SMS handler.
 
 See **[PRIVACY.md](PRIVACY.md)** for the data/risk disclosures to show users.

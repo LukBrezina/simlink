@@ -152,14 +152,19 @@ Covers the whole loop: agent queues a send → phone claims it via the outbox �
 phone confirms `sent`; agent calls `fetch_sms` → phone claims the read-request,
 uploads rows → agent retrieves them; plus auth rejection and cross-device isolation.
 
-## Distribute it (prototype)
+## Run it: hosted or self-hosted
 
-Ship to the public without the Play Store: host the server on your own VPS with
-**Kamal**, then distribute the app via **GitHub Releases + Obtainium** and
-**F-Droid**. Push uses Firebase Cloud Messaging (Google Play Services) for the
-content-free wake; on Google-free devices the app falls back to a periodic poll.
-Step-by-step in **[DISTRIBUTION.md](DISTRIBUTION.md)**; data & responsible-use
-disclosures in **[PRIVACY.md](PRIVACY.md)**.
+Two ways to get a SimLink server:
+
+- **Use a hosted instance** — create an account and connect your phone in minutes.
+- **Self-host on your own VPS** — run the whole server yourself with **Kamal**
+  (your domain, your database). Step-by-step in **[DISTRIBUTION.md](DISTRIBUTION.md)**.
+
+Either way the **app is installed one way only: a direct `.apk` download** served
+from the server (the **Download** button → `/download/simlink.apk`). No Play
+Store, no F-Droid. Push uses Firebase Cloud Messaging (Google Play Services) for
+the content-free wake; on Google-free devices the app falls back to a periodic
+poll. Data & responsible-use disclosures are in **[PRIVACY.md](PRIVACY.md)**.
 
 Quick deploy:
 ```bash

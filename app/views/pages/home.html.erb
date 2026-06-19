@@ -81,6 +81,30 @@
   </ol>
 </section>
 
+<!-- Run it your way -->
+<section class="pb-10">
+  <p class="section-label justify-center mb-6">Choose how to run the server</p>
+  <div class="grid gap-3 sm:grid-cols-2">
+    <div class="rounded-xl border border-gray-200 bg-white p-5 flex flex-col">
+      <p class="font-medium mb-1">☁️ Use this hosted service</p>
+      <p class="text-sm text-gray-500 flex-1">
+        Create an account on this instance and connect your phone in minutes — we run the
+        server. Messages are encrypted in transit, never logged, and pruned within minutes.
+      </p>
+      <%= link_to "Create an account", new_registration_path, class: "btn btn-primary mt-4" %>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-5 flex flex-col">
+      <p class="font-medium mb-1">🖥️ Self-host on your own VPS</p>
+      <p class="text-sm text-gray-500 flex-1">
+        Want full control? It's open source — run the whole SimLink server yourself on your
+        own VPS with Kamal (your domain, your database). Then point the app at it and download.
+      </p>
+      <%= link_to "View on GitHub", "https://github.com/LukBrezina/simlink",
+            class: "btn btn-secondary mt-4", target: "_blank", rel: "noopener" %>
+    </div>
+  </div>
+</section>
+
 <!-- Works with -->
 <section class="pb-10 text-center">
   <p class="section-label justify-center mb-4">Works with any MCP agent</p>

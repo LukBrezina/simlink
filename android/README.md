@@ -35,8 +35,8 @@ release { buildConfigField("String", "BASE_URL", "\"https://sms.example.com\"") 
 - **release** → your deployed HTTPS server. With HTTPS you can drop
   `android:usesCleartextTraffic="true"` from the manifest.
 
-For shipping a signed release and publishing to Obtainium / F-Droid, see
-**[../DISTRIBUTION.md](../DISTRIBUTION.md)**.
+For building & signing a release and serving it as a direct download from your
+server, see **[../DISTRIBUTION.md](../DISTRIBUTION.md)**.
 
 ## Build & install
 

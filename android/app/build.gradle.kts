@@ -9,8 +9,8 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-// Optional signing config. Present for local release builds and CI (which writes
-// it from secrets). Absent for F-Droid, which signs reproducibly with its own key.
+// Optional signing config for local release builds. Create keystore.properties
+// from keystore.properties.example (see DISTRIBUTION.md); absent for debug builds.
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) FileInputStream(keystorePropertiesFile).use { load(it) }
